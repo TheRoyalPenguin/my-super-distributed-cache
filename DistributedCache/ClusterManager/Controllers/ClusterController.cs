@@ -2,7 +2,9 @@
 using Docker.DotNet;
 using Docker.DotNet.Models;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using Node.DTO;
+using Node.Models;
 
 namespace ClusterManager.Controllers;
 
@@ -34,6 +36,7 @@ public class ClusterController : ControllerBase
         return Ok();
     }
 
+
     [HttpGet("cache/{key}")]
     public async Task<IActionResult> GetCacheItem(string key)
     {
@@ -60,8 +63,139 @@ public class ClusterController : ControllerBase
         }
     }
 
-    [HttpGet("cache/all-nodes")]
-    public async Task<IActionResult> GetFromAllNodes(string key)
+
+    [HttpGet("nodes-status")]
+    public async Task<IActionResult> GetNodeStatuses()
+    {
+        try
+        {
+            var tasks = _nodes.Select<Uri, Task<(bool IsActive, object NodeInfo)>>(async nodeUri =>
+            {
+                try
+                {
+                    string baseUrl = nodeUri.ToString().EndsWith("/") ? nodeUri.ToString() : nodeUri.ToString() + "/";
+                    var requestUri = new Uri(baseUrl + "api/nodes-status");
+
+                    var response = await _httpClient.GetAsync(requestUri);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var content = await response.Content.ReadAsStringAsync();
+                        var cacheItems = JsonConvert.DeserializeObject<List<CacheItem>>(content);
+
+                        var nodeInfo = new
+                        {
+                            NodeUrl = baseUrl,
+                            Items = cacheItems.Select(item => new
+                            {
+                                Key = item.Key,
+                                Value = item.Value,
+                                CreatedAt = item.CreatedAt,
+                                LastAccessed = item.LastAccessed,
+                                TTL = item.TTL,
+                                IsExpired = item.IsExpired()
+                            }),
+                            Status = "Success"
+                        };
+
+                        return (true, (object)nodeInfo);
+                    }
+
+                    return (false, new
+                    {
+                        NodeUrl = baseUrl,
+                        Items = new List<object>(),
+                        Status = "Error",
+                        Error = $"Status code: {(int)response.StatusCode}"
+                    });
+                }
+                catch (Exception ex)
+                {
+                    return (false, new
+                    {
+                        NodeUrl = nodeUri.ToString(),
+                        Items = new List<object>(),
+                        Status = "Error",
+                        Error = ex.Message
+                    });
+                }
+            }).ToList();
+
+            var results = await Task.WhenAll(tasks);
+
+            var activeNodes = results.Where(r => r.IsActive).Select(r => r.NodeInfo).ToList();
+            var inactiveNodes = results.Where(r => !r.IsActive).Select(r => r.NodeInfo).ToList();
+
+            var finalResult = new
+            {
+                ActiveNodes = activeNodes,
+                InactiveNodes = inactiveNodes
+            };
+
+            return Ok(finalResult);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                Status = "Critical Error",
+                Error = ex.Message
+            });
+        }
+    }
+
+
+    [HttpGet("node-item/{key}")]
+    public async Task<IActionResult> GetNode(string key)
+    {
+        try
+        {
+            var nodeUrl = GetNodeForItemKey(key);
+            string baseUrl = nodeUrl.ToString().EndsWith("/") ? nodeUrl.ToString() : nodeUrl.ToString() + "/";
+            var requestUri = new Uri(baseUrl + "api/cache/full-item/" + Uri.EscapeDataString(key));
+
+            var response = await _httpClient.GetAsync(requestUri);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var cacheItem = JsonConvert.DeserializeObject<CacheItem>(content);
+
+                return Ok(new
+                {
+                    Key = cacheItem.Key,
+                    Value = cacheItem.Value,
+                    CreatedAt = cacheItem.CreatedAt,
+                    LastAccessed = cacheItem.LastAccessed,
+                    TTL = cacheItem.TTL,
+                    IsExpired = cacheItem.IsExpired(),
+                    NodeUrl = baseUrl
+                });
+            }
+            else
+            {
+                return StatusCode((int)response.StatusCode, new
+                {
+                    Key = key,
+                    Error = "Item not found or error on node",
+                    StatusCode = (int)response.StatusCode,
+                    NodeUrl = baseUrl
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                Key = key,
+                Error = ex.Message,
+                StatusCode = 500
+            });
+        }
+    }
+
+    [HttpGet("all-nodes")]
+    public async Task<IActionResult> GetAllNodes()
     {
         try
         {
@@ -69,52 +203,63 @@ public class ClusterController : ControllerBase
             {
                 try
                 {
-                    var requestUri = new Uri(nodeUri, $"api/cache/{Uri.EscapeDataString(key)}");
+                    string baseUrl = nodeUri.ToString().EndsWith("/") ? nodeUri.ToString() : nodeUri.ToString() + "/";
+                    var requestUri = new Uri(baseUrl + "api/cache/all-items");
 
                     var response = await _httpClient.GetAsync(requestUri);
 
                     if (response.IsSuccessStatusCode)
                     {
                         var content = await response.Content.ReadAsStringAsync();
+                        var cacheItems = JsonConvert.DeserializeObject<List<CacheItem>>(content);
+
                         return new
                         {
-                            Node = nodeUri.ToString(),
-                            Value = content,
-                            Status = "Success",
-                            StatusCode = (int)response.StatusCode
+                            NodeUrl = baseUrl,
+                            Items = cacheItems.Select(item => new
+                            {
+                                Key = item.Key,
+                                Value = item.Value,
+                                CreatedAt = item.CreatedAt,
+                                LastAccessed = item.LastAccessed,
+                                TTL = item.TTL,
+                                IsExpired = item.IsExpired()
+                            }),
+                            Status = "Success"
                         };
                     }
-                    else
+
+                    return new
                     {
-                        return new
-                        {
-                            Node = nodeUri.ToString(),
-                            Value = (string)null,
-                            Status = "Error",
-                            StatusCode = (int)response.StatusCode
-                        };
-                    }
+                        NodeUrl = baseUrl,
+                        Items = new List<object>(),
+                        Status = "Error",
+                        Error = $"Status code: {(int)response.StatusCode}"
+                    };
                 }
                 catch (Exception ex)
                 {
                     return new
                     {
-                        Node = nodeUri.ToString(),
-                        Value = (string)null,
-                        Status = "Exception",
-                        Error = ex.Message,
-                        StatusCode = 500
+                        NodeUrl = nodeUri.ToString(),
+                        Items = new List<object>(),
+                        Status = "Error",
+                        Error = ex.Message
                     };
                 }
             }).ToList();
-            
+
             var results = await Task.WhenAll(tasks);
 
             return Ok(results);
         }
         catch (Exception ex)
         {
-            return StatusCode(500, $"Critical error: {ex.Message}");
+            return StatusCode(500, new
+            {
+                Status = "Critical Error",
+                Error = ex.Message
+            });
         }
     }
 
