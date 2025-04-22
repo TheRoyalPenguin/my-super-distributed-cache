@@ -1,4 +1,5 @@
-﻿using ClusterManager.DTO;
+﻿using System.Diagnostics;
+using ClusterManager.DTO;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -13,8 +14,11 @@ namespace ClusterManager.Controllers;
 public class ClusterController : ControllerBase
 {
     private readonly List<Uri> _nodes = new();
+    private readonly List<Uri> _spareNodes = new();
     private readonly object _lock = new();
     private readonly HttpClient _httpClient;
+
+    private const int MaxActiveNodes = 3;
 
     public ClusterController(HttpClient httpClient)
     {
@@ -27,9 +31,18 @@ public class ClusterController : ControllerBase
         lock (_lock)
         {
             var nodeUri = new Uri(request.Url);
-            if (!_nodes.Contains(nodeUri))
+            if (_nodes.Contains(nodeUri) || _spareNodes.Contains(nodeUri))
+            {
+                return Conflict("Node already registered");
+            }
+
+            if (_nodes.Count <= MaxActiveNodes)
             {
                 _nodes.Add(nodeUri);
+            }
+            else
+            {
+                _spareNodes.Add(nodeUri);
             }
         }
 
@@ -64,132 +77,181 @@ public class ClusterController : ControllerBase
     }
 
 
-    [HttpGet("nodes-status")]
-    public async Task<IActionResult> GetNodeStatuses()
+    [HttpGet("nodes/status")]
+    public async Task<IActionResult> GetNodesStatus()
     {
         try
         {
-            var tasks = _nodes.Select<Uri, Task<(bool IsActive, object NodeInfo)>>(async nodeUri =>
+            if (_nodes.Count == 0)
             {
+                return NotFound("No nodes registered in the cluster");
+            }
+
+            var nodeStatuses = new List<object>();
+
+            foreach (var nodeUrl in _nodes)
+            {
+                object nodeInfo;
+                var stopwatch = Stopwatch.StartNew();
+
                 try
                 {
-                    string baseUrl = nodeUri.ToString().EndsWith("/") ? nodeUri.ToString() : nodeUri.ToString() + "/";
-                    var requestUri = new Uri(baseUrl + "api/nodes-status");
+                    string baseUrl = nodeUrl.ToString().EndsWith("/") ? nodeUrl.ToString() : nodeUrl.ToString() + "/";
+                    var requestUri = new Uri(baseUrl + "api/cache/health");
 
-                    var response = await _httpClient.GetAsync(requestUri);
+                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                    var response = await _httpClient.GetAsync(requestUri, timeoutCts.Token);
+
+                    stopwatch.Stop();
 
                     if (response.IsSuccessStatusCode)
                     {
-                        var content = await response.Content.ReadAsStringAsync();
-                        var cacheItems = JsonConvert.DeserializeObject<List<CacheItem>>(content);
-
-                        var nodeInfo = new
+                        var healthData = await response.Content.ReadFromJsonAsync<HealthResponse>();
+                        nodeInfo = new
                         {
-                            NodeUrl = baseUrl,
-                            Items = cacheItems.Select(item => new
-                            {
-                                Key = item.Key,
-                                Value = item.Value,
-                                CreatedAt = item.CreatedAt,
-                                LastAccessed = item.LastAccessed,
-                                TTL = item.TTL,
-                                IsExpired = item.IsExpired()
-                            }),
-                            Status = "Success"
+                            Url = nodeUrl,
+                            LastChecked = DateTime.UtcNow,
+                            Status = "Active",
+                            ResponseTimeMs = stopwatch.Elapsed.TotalMilliseconds,
+                            ItemsCount = healthData?.ItemsCount,
+                            Error = (string)null
                         };
-
-                        return (true, (object)nodeInfo);
                     }
-
-                    return (false, new
+                    else
                     {
-                        NodeUrl = baseUrl,
-                        Items = new List<object>(),
-                        Status = "Error",
-                        Error = $"Status code: {(int)response.StatusCode}"
-                    });
+                        nodeInfo = new
+                        {
+                            Url = nodeUrl,
+                            LastChecked = DateTime.UtcNow,
+                            Status = "Unhealthy",
+                            ResponseTimeMs = stopwatch.Elapsed.TotalMilliseconds,
+                            ItemsCount = (int?)null,
+                            Error = $"HTTP {(int)response.StatusCode}"
+                        };
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    nodeInfo = new
+                    {
+                        Url = nodeUrl,
+                        LastChecked = DateTime.UtcNow,
+                        Status = "Inactive",
+                        ResponseTimeMs = (double?)null,
+                        ItemsCount = (int?)null,
+                        Error = "Request timeout (2s)"
+                    };
                 }
                 catch (Exception ex)
                 {
-                    return (false, new
+                    nodeInfo = new
                     {
-                        NodeUrl = nodeUri.ToString(),
-                        Items = new List<object>(),
-                        Status = "Error",
-                        Error = ex.Message
-                    });
+                        Url = nodeUrl,
+                        LastChecked = DateTime.UtcNow,
+                        Status = "Inactive",
+                        ResponseTimeMs = (double?)null,
+                        ItemsCount = (int?)null,
+                        Error = ex.GetBaseException().Message
+                    };
                 }
-            }).ToList();
 
-            var results = await Task.WhenAll(tasks);
+                nodeStatuses.Add(nodeInfo);
+            }
 
-            var activeNodes = results.Where(r => r.IsActive).Select(r => r.NodeInfo).ToList();
-            var inactiveNodes = results.Where(r => !r.IsActive).Select(r => r.NodeInfo).ToList();
+            // Создаем результат с явным приведением типов
+            var activeNodes = nodeStatuses.Where(n => (string)((dynamic)n).Status == "Active");
+            var inactiveNodes = nodeStatuses.Where(n => (string)((dynamic)n).Status != "Active");
 
-            var finalResult = new
+            var result = new
             {
                 ActiveNodes = activeNodes,
-                InactiveNodes = inactiveNodes
+                InactiveNodes = inactiveNodes,
+                TotalNodes = _nodes.Count,
+                CheckedAt = DateTime.UtcNow
             };
 
-            return Ok(finalResult);
+            return Ok(result);
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new
-            {
-                Status = "Critical Error",
-                Error = ex.Message
-            });
+            return StatusCode(500, new { Error = ex.Message });
         }
     }
 
-
-    [HttpGet("node-item/{key}")]
-    public async Task<IActionResult> GetNode(string key)
+    [HttpGet("node-info/{key}")]
+    public async Task<IActionResult> GetNodeInfoByKey(string key)
     {
         try
         {
+            if (_nodes.Count == 0)
+            {
+                return NotFound(new { Error = "No nodes available in cluster" });
+            }
+
+            // 1. Определяем ноду, ответственную за ключ
             var nodeUrl = GetNodeForItemKey(key);
-            string baseUrl = nodeUrl.ToString().EndsWith("/") ? nodeUrl.ToString() : nodeUrl.ToString() + "/";
-            var requestUri = new Uri(baseUrl + "api/cache/full-item/" + Uri.EscapeDataString(key));
+            int nodeIndex = Math.Abs(key.GetHashCode()) % _nodes.Count;
 
-            var response = await _httpClient.GetAsync(requestUri);
-
-            if (response.IsSuccessStatusCode)
+            // 2. Собираем базовую информацию о ноде
+            var nodeInfo = new
             {
-                var content = await response.Content.ReadAsStringAsync();
-                var cacheItem = JsonConvert.DeserializeObject<CacheItem>(content);
+                ResponsibleNode = new
+                {
+                    Url = nodeUrl.ToString(),
+                    Index = nodeIndex,
+                    IsLocal = nodeUrl.ToString().Contains(Request.Host.Value) // Проверяем локальная ли это нода
+                },
+                KeyInfo = new
+                {
+                    OriginalKey = key,
+                    HashedKey = key.GetHashCode(),
+                    KeySlot = Math.Abs(key.GetHashCode()) % _nodes.Count
+                },
+                ClusterInfo = new
+                {
+                    TotalNodes = _nodes.Count,
+                    AllNodes = _nodes.Select(u => u.ToString()).ToList()
+                }
+            };
 
-                return Ok(new
-                {
-                    Key = cacheItem.Key,
-                    Value = cacheItem.Value,
-                    CreatedAt = cacheItem.CreatedAt,
-                    LastAccessed = cacheItem.LastAccessed,
-                    TTL = cacheItem.TTL,
-                    IsExpired = cacheItem.IsExpired(),
-                    NodeUrl = baseUrl
-                });
-            }
-            else
+            // 3. Получаем детали кеша с целевой ноды (если доступна)
+            object cacheItemInfo = null;
+            try
             {
-                return StatusCode((int)response.StatusCode, new
+                string baseUrl = nodeUrl.ToString().EndsWith("/") ? nodeUrl.ToString() : nodeUrl.ToString() + "/";
+                var requestUri = new Uri(baseUrl + $"api/cache/item/{Uri.EscapeDataString(key)}");
+
+                var response = await _httpClient.GetAsync(requestUri);
+                if (response.IsSuccessStatusCode)
                 {
-                    Key = key,
-                    Error = "Item not found or error on node",
-                    StatusCode = (int)response.StatusCode,
-                    NodeUrl = baseUrl
-                });
+                    cacheItemInfo = await response.Content.ReadFromJsonAsync<object>();
+                }
             }
+            catch (Exception ex)
+            {
+                cacheItemInfo = new { Error = $"Failed to retrieve item from node: {ex.Message}" };
+            }
+
+            // 4. Формируем итоговый ответ
+            var result = new
+            {
+                Metadata = new
+                {
+                    Timestamp = DateTime.UtcNow,
+                    RequestedFrom = $"{Request.Scheme}://{Request.Host}"
+                },
+                NodeInfo = nodeInfo,
+                CacheItem = cacheItemInfo
+            };
+
+            return Ok(result);
         }
         catch (Exception ex)
         {
             return StatusCode(500, new
             {
-                Key = key,
                 Error = ex.Message,
-                StatusCode = 500
+                StackTrace = ex.StackTrace
             });
         }
     }
@@ -199,67 +261,51 @@ public class ClusterController : ControllerBase
     {
         try
         {
-            var tasks = _nodes.Select<Uri, Task<object>>(async nodeUri =>
+            if (_nodes.Count == 0)
+            {
+                return NotFound("No nodes available");
+            }
+
+            var nodeResponses = new List<object>();
+            foreach (var nodeUrl in _nodes)
             {
                 try
                 {
-                    string baseUrl = nodeUri.ToString().EndsWith("/") ? nodeUri.ToString() : nodeUri.ToString() + "/";
-                    var requestUri = new Uri(baseUrl + "api/cache/all-items");
+                    string baseUrl = nodeUrl.ToString().EndsWith("/") ? nodeUrl.ToString() : nodeUrl.ToString() + "/";
+                    var requestUri = new Uri(baseUrl + "api/cache/items");
 
                     var response = await _httpClient.GetAsync(requestUri);
 
-                    if (response.IsSuccessStatusCode)
+                    var responseData = new
                     {
-                        var content = await response.Content.ReadAsStringAsync();
-                        var cacheItems = JsonConvert.DeserializeObject<List<CacheItem>>(content);
-
-                        return new
-                        {
-                            NodeUrl = baseUrl,
-                            Items = cacheItems.Select(item => new
-                            {
-                                Key = item.Key,
-                                Value = item.Value,
-                                CreatedAt = item.CreatedAt,
-                                LastAccessed = item.LastAccessed,
-                                TTL = item.TTL,
-                                IsExpired = item.IsExpired()
-                            }),
-                            Status = "Success"
-                        };
-                    }
-
-                    return new
-                    {
-                        NodeUrl = baseUrl,
-                        Items = new List<object>(),
-                        Status = "Error",
-                        Error = $"Status code: {(int)response.StatusCode}"
+                        NodeUrl = nodeUrl,
+                        StatusCode = response.StatusCode,
+                        Items = response.IsSuccessStatusCode
+                            ? await response.Content.ReadFromJsonAsync<Dictionary<string, object>>()
+                            : null,
+                        Error = !response.IsSuccessStatusCode
+                            ? await response.Content.ReadAsStringAsync()
+                            : null
                     };
+
+                    nodeResponses.Add(responseData);
                 }
-                catch (Exception ex)
+                catch (HttpRequestException httpEx)
                 {
-                    return new
+                    nodeResponses.Add(new
                     {
-                        NodeUrl = nodeUri.ToString(),
-                        Items = new List<object>(),
-                        Status = "Error",
-                        Error = ex.Message
-                    };
+                        NodeUrl = nodeUrl,
+                        StatusCode = 503,
+                        Error = $"Node unreachable: {httpEx.Message}"
+                    });
                 }
-            }).ToList();
+            }
 
-            var results = await Task.WhenAll(tasks);
-
-            return Ok(results);
+            return Ok(nodeResponses);
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new
-            {
-                Status = "Critical Error",
-                Error = ex.Message
-            });
+            return StatusCode(500, new { Error = ex.Message });
         }
     }
 
@@ -296,5 +342,10 @@ public class ClusterController : ControllerBase
         int hash = key.GetHashCode();
         int index = Math.Abs(hash) % _nodes.Count;
         return _nodes[index];
+    }
+
+    private void SwapNodesAsync(Uri nodeUri)
+    {
+        _nodes[_spareNodes.IndexOf(nodeUri)] = _spareNodes[_spareNodes.IndexOf(nodeUri)];
     }
 }

@@ -28,7 +28,7 @@ public class CacheClusterMonitor
     
     public async Task<T> GetInfoNodeAsync<T>(string key)
     {
-        var response = await _httpClient.GetAsync(_clusterManagerUrl + $"api/cluster/node-item/" + Uri.EscapeDataString(key));
+        var response = await _httpClient.GetAsync(_clusterManagerUrl + $"api/cluster/node-info/" + Uri.EscapeDataString(key));
         if (response.IsSuccessStatusCode)
         {
             return await response.Content.ReadFromJsonAsync<T>();
