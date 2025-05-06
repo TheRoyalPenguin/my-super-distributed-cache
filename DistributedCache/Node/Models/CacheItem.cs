@@ -8,20 +8,20 @@ public class CacheItem
     public DateTime LastAccessed { get; private set; }
     public TimeSpan? TTL { get; private set; }
 
-    public bool IsExpired()
-    {
-        return TTL.HasValue && DateTime.UtcNow - CreatedAt > TTL.Value;
-    }
-
     public CacheItem(string key, object value, TimeSpan? ttl = null)
     {
         Key = key;
         Value = value;
         CreatedAt = DateTime.UtcNow;
         LastAccessed = CreatedAt;
-        if (ttl != null)
-        {
-            TTL = ttl.Value;
-        }
+        TTL = ttl;
+    }
+    public bool IsExpired()
+    {
+        return TTL.HasValue && DateTime.UtcNow > CreatedAt + TTL.Value;
+    }
+    public void UpdateAccessTime()
+    {
+        LastAccessed = DateTime.UtcNow;
     }
 }
