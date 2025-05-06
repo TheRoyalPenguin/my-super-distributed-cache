@@ -1,4 +1,5 @@
 ﻿using ClusterManager.DTO;
+using ClusterManager.Services;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -8,25 +9,19 @@ namespace ClusterManager.Controllers;
 
 [Route("api/cluster")]
 [ApiController]
-public class ClusterController : ControllerBase
+public class ClusterController(INodesStorage _nodesStorage, HttpClient _httpClient) : ControllerBase
 {
-    private readonly List<Uri> _nodes = new();
     private readonly object _lock = new();
-    private readonly HttpClient _httpClient;
-    public ClusterController(HttpClient httpClient)
-    {
-        _httpClient = httpClient;
-    }
 
     [HttpPost("register")]
     public IActionResult RegisterNode([FromBody] NodeRegistrationRequest request)
     {
         lock (_lock)
         {
-            var nodeUri = new Uri(request.Url);
-            if (!_nodes.Contains(nodeUri))
+            var nodeUrl = new Uri(request.Url.EndsWith("/") ? request.Url : request.Url + "/");
+            if (!_nodesStorage.Nodes.Contains(nodeUrl))
             {
-                _nodes.Add(nodeUri);
+                _nodesStorage.Nodes.Add(nodeUrl);
             }
         }
 
@@ -38,7 +33,7 @@ public class ClusterController : ControllerBase
     {
         try
         {
-            var nodeUrl = GetNodeForItemKey(key);
+            var nodeUrl = GetNodeUrlForItemKey(key);
             string baseUrl = nodeUrl.ToString().EndsWith("/") ? nodeUrl.ToString() : nodeUrl.ToString() + "/";
             var requestUri = new Uri(baseUrl + "api/cache/" + Uri.EscapeDataString(key));
 
@@ -64,7 +59,7 @@ public class ClusterController : ControllerBase
     {
         try
         {
-            var nodeUrl = GetNodeForItemKey(key);
+            var nodeUrl = GetNodeUrlForItemKey(key);
             string baseUrl = nodeUrl.ToString().EndsWith("/") ? nodeUrl.ToString() : nodeUrl.ToString() + "/";
             var requestUri = new Uri(baseUrl + "api/cache/" + Uri.EscapeDataString(key));
 
@@ -84,13 +79,110 @@ public class ClusterController : ControllerBase
         }
     }
 
-    private ActionResult<Uri> GetNodeForItemKey(string key)
+    private Uri GetNodeUrlForItemKey(string key)
     {
-        if (_nodes.Count == 0) 
-            return NotFound();
+        if (_nodesStorage.Nodes.Count == 0)
+            throw new Exception();
 
         int hash = key.GetHashCode();
-        int index = Math.Abs(hash) % _nodes.Count;
-        return _nodes[index];
+        int index = Math.Abs(hash) % _nodesStorage.Nodes.Count;
+        return _nodesStorage.Nodes[index];
+    }
+
+    [HttpPost("nodes/create/{containerName}")]
+    public async Task<IActionResult> CreateNode(string containerName)
+    {
+        var nodeSettings = GetNodeSettings(containerName);
+
+        var config = new NodeConfigurationDTO
+        {
+            Image = nodeSettings.Image,
+            ContainerName = nodeSettings.ContainerName,
+            EnvironmentVariables = nodeSettings.EnvironmentVariables,
+            PortBindings = nodeSettings.PortBindings
+        };
+
+        try
+        {
+            // Linux
+            // var dockerUri = new Uri("unix:///var/run/docker.sock");
+
+            // Windows
+            var dockerUri = new Uri("npipe://./pipe/docker_engine");
+
+            using (var dockerClient = new DockerClientConfiguration(dockerUri).CreateClient())
+            {
+                dockerClient.DefaultTimeout = TimeSpan.FromMinutes(5);
+
+                var createParams = new CreateContainerParameters
+                {
+                    Image = config.Image,
+                    Name = config.ContainerName,
+                    Env = new List<string>(),
+                    ExposedPorts = new Dictionary<string, EmptyStruct>(),
+                    HostConfig = new HostConfig
+                    {
+                        PortBindings = new Dictionary<string, IList<PortBinding>>()
+                    }
+                };
+
+                if (config.EnvironmentVariables != null)
+                {
+                    foreach (var env in config.EnvironmentVariables)
+                    {
+                        createParams.Env.Add(env.Key + "=" + env.Value);
+                    }
+                }
+
+                if (config.PortBindings != null)
+                {
+                    foreach (var binding in config.PortBindings)
+                    {
+                        createParams.ExposedPorts[binding.Key] = default;
+                        createParams.HostConfig.PortBindings[binding.Key] = new List<PortBinding>
+                        {
+                            new PortBinding
+                            {
+                                HostPort = binding.Value
+                            }
+                        };
+                    }
+                }
+
+                var response = await dockerClient.Containers.CreateContainerAsync(createParams);
+                var started = await dockerClient.Containers.StartContainerAsync(response.ID, new ContainerStartParameters());
+                if (!started)
+                {
+                    return StatusCode(500, "Не удалось запустить контейнер");
+                }
+
+                return Ok(response.ID);
+            }
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ex.Message);
+        }
+    }
+
+    private NodeConfigurationDTO GetNodeSettings(string containerName)
+    {
+        var defaultSettings = new NodeConfigurationDTO
+        {
+            Image = "my-node-service:dev",
+            ContainerName = "node-container-" + containerName + "-" + Guid.NewGuid(),
+            EnvironmentVariables = new Dictionary<string, string>
+            {
+                { "ASPNETCORE_ENVIRONMENT", "Development" },
+                { "NODE_ENV", "production" },
+                { "CUSTOM_CONFIG", "значение" }
+            },
+            PortBindings = new Dictionary<string, string>
+            {
+                { "8080/tcp", "" }
+            }
+        };
+
+        return defaultSettings;
     }
 }
