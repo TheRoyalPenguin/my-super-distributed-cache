@@ -13,21 +13,6 @@ public class ClusterController(INodesStorage _nodesStorage, HttpClient _httpClie
 {
     private readonly object _lock = new();
 
-    [HttpPost("register")]
-    public IActionResult RegisterNode([FromBody] NodeRegistrationRequest request)
-    {
-        lock (_lock)
-        {
-            var nodeUrl = new Uri(request.Url.EndsWith("/") ? request.Url : request.Url + "/");
-            if (!_nodesStorage.Nodes.Contains(nodeUrl))
-            {
-                _nodesStorage.Nodes.Add(nodeUrl);
-            }
-        }
-
-        return Ok();
-    }
-
     [HttpGet("cache/{key}")]
     public async Task<IActionResult> GetCacheItem(string key)
     {
@@ -35,9 +20,9 @@ public class ClusterController(INodesStorage _nodesStorage, HttpClient _httpClie
         {
             var nodeUrl = GetNodeUrlForItemKey(key);
             string baseUrl = nodeUrl.ToString().EndsWith("/") ? nodeUrl.ToString() : nodeUrl.ToString() + "/";
-            var requestUri = new Uri(baseUrl + "api/cache/" + Uri.EscapeDataString(key));
+            var requestUrl = new Uri(baseUrl + "api/cache/" + Uri.EscapeDataString(key));
 
-            var response = await _httpClient.GetAsync(requestUri);
+            var response = await _httpClient.GetAsync(requestUrl);
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -54,14 +39,14 @@ public class ClusterController(INodesStorage _nodesStorage, HttpClient _httpClie
         }
     }
 
-    [HttpPut("cache/{key}")]
-    public async Task<IActionResult> SetCacheItem(string key, [FromBody] CacheItemDto item)
+    [HttpPut("cache")]
+    public async Task<IActionResult> SetCacheItem([FromBody] CacheItemDto item)
     {
         try
         {
-            var nodeUrl = GetNodeUrlForItemKey(key);
+            var nodeUrl = GetNodeUrlForItemKey(item.Key);
             string baseUrl = nodeUrl.ToString().EndsWith("/") ? nodeUrl.ToString() : nodeUrl.ToString() + "/";
-            var requestUri = new Uri(baseUrl + "api/cache/" + Uri.EscapeDataString(key));
+            var requestUri = new Uri(baseUrl + "api/cache");
 
             var response = await _httpClient.PutAsJsonAsync(requestUri, item);
             if (response.IsSuccessStatusCode)
@@ -79,18 +64,18 @@ public class ClusterController(INodesStorage _nodesStorage, HttpClient _httpClie
         }
     }
 
-    private Uri GetNodeUrlForItemKey(string key)
-    {
-        if (_nodesStorage.Nodes.Count == 0)
-            throw new Exception();
-
-        int hash = key.GetHashCode();
-        int index = Math.Abs(hash) % _nodesStorage.Nodes.Count;
-        return _nodesStorage.Nodes[index];
-    }
-
     [HttpPost("nodes/create/{containerName}")]
     public async Task<IActionResult> CreateNode(string containerName)
+    {
+        var result = await CreateNodeAsync(containerName);
+
+        if (!result.IsSuccess)
+            return StatusCode(500, result.Error);
+
+        return Ok(result.Data);
+    }
+
+    private async Task<Result<NodeResponseDto>> CreateNodeAsync(string containerName)
     {
         var nodeSettings = GetNodeSettings(containerName);
 
@@ -139,13 +124,7 @@ public class ClusterController(INodesStorage _nodesStorage, HttpClient _httpClie
                     foreach (var binding in config.PortBindings)
                     {
                         createParams.ExposedPorts[binding.Key] = default;
-                        createParams.HostConfig.PortBindings[binding.Key] = new List<PortBinding>
-                        {
-                            new PortBinding
-                            {
-                                HostPort = binding.Value
-                            }
-                        };
+                        createParams.HostConfig.PublishAllPorts = true; // публикуем внешний порт
                     }
                 }
 
@@ -153,16 +132,42 @@ public class ClusterController(INodesStorage _nodesStorage, HttpClient _httpClie
                 var started = await dockerClient.Containers.StartContainerAsync(response.ID, new ContainerStartParameters());
                 if (!started)
                 {
-                    return StatusCode(500, "Не удалось запустить контейнер");
+                    return Result<NodeResponseDto>.Fail("Ошибка запуска контейнера. ID=" + response.ID);
                 }
 
-                return Ok(response.ID);
+                var inspect = await dockerClient.Containers.InspectContainerAsync(response.ID);
+                var hostPort = inspect.NetworkSettings.Ports["8080/tcp"].FirstOrDefault()?.HostPort;
+                var nodeUrl = "http://localhost:" + hostPort;
+
+                NodeResponseDto dto = new()
+                {
+                    Url = nodeUrl,
+                    Id = response.ID
+                };
+                if (!RegisterNode(nodeUrl))
+                    return Result<NodeResponseDto>.Fail("Ошибка регистрации узла.");
+
+                return Result<NodeResponseDto>.Ok(dto);
             }
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ex.Message);
+            return Result<NodeResponseDto>.Fail(ex.Message);
         }
+    }
+
+    private bool RegisterNode(string url)
+    {
+        lock (_lock)
+        {
+            var nodeUrl = new Uri(url.EndsWith("/") ? url : url + "/");
+            if (!_nodesStorage.Nodes.Contains(nodeUrl))
+            {
+                _nodesStorage.Nodes.Add(nodeUrl);
+            }
+        }
+
+        return true;
     }
 
     private NodeConfigurationDTO GetNodeSettings(string containerName)
@@ -174,8 +179,6 @@ public class ClusterController(INodesStorage _nodesStorage, HttpClient _httpClie
             EnvironmentVariables = new Dictionary<string, string>
             {
                 { "ASPNETCORE_ENVIRONMENT", "Development" },
-                { "NODE_ENV", "production" },
-                { "CUSTOM_CONFIG", "значение" }
             },
             PortBindings = new Dictionary<string, string>
             {
@@ -184,5 +187,15 @@ public class ClusterController(INodesStorage _nodesStorage, HttpClient _httpClie
         };
 
         return defaultSettings;
+    }
+
+    private Uri GetNodeUrlForItemKey(string key)
+    {
+        if (_nodesStorage.Nodes.Count == 0)
+            throw new Exception();
+
+        int hash = key.GetHashCode();
+        int index = Math.Abs(hash) % _nodesStorage.Nodes.Count;
+        return _nodesStorage.Nodes[index];
     }
 }
