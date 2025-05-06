@@ -1,4 +1,4 @@
-﻿namespace ClusterManager.Services;
+﻿namespace ClusterManager.Interfaces;
 
 public interface INodesStorage
 {

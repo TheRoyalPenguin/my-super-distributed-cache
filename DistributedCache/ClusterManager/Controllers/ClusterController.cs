@@ -1,5 +1,5 @@
 ﻿using ClusterManager.DTO;
-using ClusterManager.Services;
+using ClusterManager.Interfaces;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -79,7 +79,7 @@ public class ClusterController(INodesStorage _nodesStorage, HttpClient _httpClie
     {
         var nodeSettings = GetNodeSettings(containerName);
 
-        var config = new NodeConfigurationDTO
+        var config = new NodeConfigurationDto
         {
             Image = nodeSettings.Image,
             ContainerName = nodeSettings.ContainerName,
@@ -170,9 +170,9 @@ public class ClusterController(INodesStorage _nodesStorage, HttpClient _httpClie
         return true;
     }
 
-    private NodeConfigurationDTO GetNodeSettings(string containerName)
+    private NodeConfigurationDto GetNodeSettings(string containerName)
     {
-        var defaultSettings = new NodeConfigurationDTO
+        var defaultSettings = new NodeConfigurationDto
         {
             Image = "my-node-service:dev",
             ContainerName = "node-container-" + containerName + "-" + Guid.NewGuid(),

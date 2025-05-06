@@ -1,6 +1,6 @@
 ﻿namespace ClusterManager.DTO;
 
-public class NodeConfigurationDTO
+public class NodeConfigurationDto
 {
     public string Image { get; set; }
     public string ContainerName { get; set; }

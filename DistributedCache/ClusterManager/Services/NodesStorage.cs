@@ -1,4 +1,6 @@
-﻿namespace ClusterManager.Services;
+﻿using ClusterManager.Interfaces;
+
+namespace ClusterManager.Services;
 
 public class NodesStorage : INodesStorage
 {
