@@ -2,6 +2,7 @@
 
 public class CacheItemDto
 {
-    public object Value { get; set; }
-    public TimeSpan? TTL { get; set; }
+    public required string Key { get; init; }
+    public required object Value { get; set; }
+    public TimeSpan? TTL { get; init; }
 }

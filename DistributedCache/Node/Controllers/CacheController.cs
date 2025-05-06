@@ -1,36 +1,37 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Node.DTO;
 using Node.Models;
-using System.Collections.Concurrent;
+using Node.Services;
 
 namespace Node.Controllers;
 
 [Route("api/cache")]
 [ApiController]
-public class CacheController : ControllerBase
+public class CacheController(ICacheStorage _cacheStorage) : ControllerBase
 {
-    private readonly ConcurrentDictionary<string, CacheItem> _cache = new();
-
     [HttpGet("{key}")]
-    public ActionResult<object> Get(string key)
+    public IActionResult Get(string key)
     {
-        if (_cache.TryGetValue(key, out var item) && !item.IsExpired())
+        if (_cacheStorage.Cache.TryGetValue(key, out var item))
         {
+            if (item.IsExpired())
+                return NotFound("TTL has expired.");
+            item.UpdateAccessTime();
             return Ok(item.Value);
         }
         return NotFound();
     }
 
-    [HttpPut("{key}")]
-    public IActionResult Set(string key, [FromBody] CacheItemDto item)
+    [HttpPut]
+    public IActionResult Set([FromBody] CacheItemDto item)
     {
         var cacheItem = new CacheItem(
-            key,
+            item.Key,
             item.Value,
             item.TTL.HasValue ? item.TTL : null
         );
 
-        _cache.AddOrUpdate(key, cacheItem, (k, old) => cacheItem);
+        _cacheStorage.Cache.AddOrUpdate(cacheItem.Key, cacheItem, (k, old) => cacheItem);
         return Ok();
     }
 }
