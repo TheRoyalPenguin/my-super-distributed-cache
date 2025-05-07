@@ -30,10 +30,12 @@ public class ClusterController(INodesService _nodesService) : ControllerBase
         return Ok(result.Data);
     }
 
-    [HttpPost("nodes/create/{containerName}")]
-    public async Task<IActionResult> CreateNode(string containerName)
+    [HttpPost("nodes/create/{containerName}/{copiesCount?}")]
+    public async Task<IActionResult> CreateNode(string containerName, int copiesCount = 1)
     {
-        var result = await _nodesService.CreateNodeAsync(containerName);
+        if (copiesCount < 1 || copiesCount > 10)
+            return BadRequest("Количество копий одного узла может быть от 1 до 10");
+        var result = await _nodesService.CreateNodeAsync(containerName, copiesCount);
 
         if (!result.IsSuccess)
             return StatusCode(result.StatusCode, result.Error);
