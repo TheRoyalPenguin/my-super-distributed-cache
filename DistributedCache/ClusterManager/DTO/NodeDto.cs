@@ -1,6 +1,6 @@
 ﻿namespace ClusterManager.DTO;
 
-public class NodeResponseDto
+public class NodeDto
 {
     public string Url { get; set; }
     public string Id { get; set; }

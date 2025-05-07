@@ -1,6 +1,6 @@
-﻿namespace Node.DTO;
+﻿namespace ClusterManager.DTO;
 
-public class CacheItemDto
+public class CacheItemRequestDto
 {
     public string Key { get; init; }
     public object Value { get; set; }
