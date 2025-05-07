@@ -1,6 +1,6 @@
-﻿using ClusterManager.Interfaces;
+﻿using ClusterManager.DTO;
+using ClusterManager.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Node.DTO;
 
 namespace ClusterManager.Controllers;
 
@@ -20,7 +20,7 @@ public class ClusterController(INodesService _nodesService) : ControllerBase
     }
 
     [HttpPut("cache")]
-    public async Task<IActionResult> SetCacheItem([FromBody] CacheItemDto item)
+    public async Task<IActionResult> SetCacheItem([FromBody] CacheItemRequestDto item)
     {
         var result = await _nodesService.SetCacheItemAsync(item);
 

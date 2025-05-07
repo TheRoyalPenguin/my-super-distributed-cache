@@ -2,26 +2,63 @@
 using ClusterManager.Interfaces;
 using Docker.DotNet.Models;
 using Docker.DotNet;
-using Node.DTO;
+using Newtonsoft.Json;
 
 namespace ClusterManager.Services;
 
 public class NodesService(HttpClient _httpClient) : INodesService
 {
     private readonly object _lock = new();
-    private readonly List<List<Uri>> Nodes = new();
+    private readonly List<List<Node>> Nodes = new();
 
-    public async Task<Result<string?>> SetCacheItemAsync(CacheItemDto item)
+    public async Task<Result<List<List<NodeWithDataResponseDto>>>> GetAllNodesWithDataAsync()
+    {
+        List<List<NodeWithDataResponseDto>> result = new();
+        foreach (var copyNodes in Nodes)
+        {
+            List<NodeWithDataResponseDto> nodesWithData = new();
+            foreach (var node in copyNodes)
+            {
+                string baseUrl = node.Url.ToString().EndsWith("/") ? node.Url.ToString() : node.Url.ToString() + "/";
+                var requestUri = new Uri(baseUrl + "api/cache/all");
+                var response = await _httpClient.GetAsync(requestUri);
+
+                var content = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    return Result<List<List<NodeWithDataResponseDto>>>.Fail(content, (int)response.StatusCode);
+                }
+
+                Console.WriteLine(content);
+                var dto = JsonConvert.DeserializeObject<List<CacheItemResponseDto>>(content);
+                NodeWithDataResponseDto nodeWithData = new()
+                {
+                    Url = node.Url,
+                    Id = node.Id,
+                    Items = dto
+                };
+
+                nodesWithData.Add(nodeWithData);
+            }
+            result.Add(nodesWithData);
+        }
+
+        return Result<List<List<NodeWithDataResponseDto>>>.Ok(result, 200);
+    }
+    public async Task<Result<string?>> SetCacheItemAsync(CacheItemRequestDto item)
     {
         try
         {
             var nodesUrlIndex = GetNodesUrlListIndexForItemKey(item.Key);
-            var nodesUrl = Nodes[nodesUrlIndex];
+            var nodes = Nodes[nodesUrlIndex];
 
-            foreach(var url in nodesUrl)
+            foreach(var node in nodes)
             {
+                var url = node.Url;
+
                 string baseUrl = url.ToString().EndsWith("/") ? url.ToString() : url.ToString() + "/";
-                var requestUri = new Uri(baseUrl + "api/cache/");
+                var requestUri = new Uri(baseUrl + "api/cache");
                 var response = await _httpClient.PutAsJsonAsync(requestUri, item);
 
                 if (!response.IsSuccessStatusCode)
@@ -42,11 +79,12 @@ public class NodesService(HttpClient _httpClient) : INodesService
         try
         {
             var nodesUrlIndex = GetNodesUrlListIndexForItemKey(key);
-            var nodesUrl = Nodes[nodesUrlIndex];
+            var nodes = Nodes[nodesUrlIndex];
             HttpResponseMessage? response = null;
 
-            foreach (var url in nodesUrl)
+            foreach (var node in nodes)
             {
+                var url = node.Url;
                 string baseUrl = url.ToString().EndsWith("/") ? url.ToString() : url.ToString() + "/";
                 var requestUri = new Uri(baseUrl + "api/cache/" + Uri.EscapeDataString(key));
                 response = await _httpClient.GetAsync(requestUri);
@@ -69,7 +107,7 @@ public class NodesService(HttpClient _httpClient) : INodesService
             return Result<string?>.Fail(ex.Message, 500);
         }
     }
-    public async Task<Result<List<NodeResponseDto>>> CreateNodeAsync(string containerName, int copiesCount)
+    public async Task<Result<List<NodeDto>>> CreateNodeAsync(string containerName, int copiesCount)
     {
         var nodeSettings = GetNodeSettings(containerName);
 
@@ -122,7 +160,7 @@ public class NodesService(HttpClient _httpClient) : INodesService
                     }
                 }
 
-                List<NodeResponseDto> result = new();
+                List<NodeDto> nodesToRegister = new();
                 for (int i = 0; i < copiesCount; i++)
                 {
                     createParams.Name = GenerateContainerName(containerName);
@@ -130,33 +168,31 @@ public class NodesService(HttpClient _httpClient) : INodesService
                     var started = await dockerClient.Containers.StartContainerAsync(response.ID, new ContainerStartParameters());
                     if (!started)
                     {
-                        return Result<List<NodeResponseDto>>.Fail("Ошибка запуска контейнера. ID=" + response.ID, 500);
+                        return Result<List<NodeDto>>.Fail("Ошибка запуска контейнера. ID=" + response.ID, 500);
                     }
 
                     var inspect = await dockerClient.Containers.InspectContainerAsync(response.ID);
                     var hostPort = inspect.NetworkSettings.Ports["8080/tcp"].FirstOrDefault()?.HostPort;
                     var nodeUrl = "http://localhost:" + hostPort;
 
-                    NodeResponseDto dto = new()
+                    NodeDto dto = new()
                     {
                         Url = nodeUrl,
                         Id = response.ID
                     };
 
-                    var isRegisteredNode = RegisterNode(new List<string> { nodeUrl, nodeUrl });
-
-                    if (!isRegisteredNode)
-                        return Result<List<NodeResponseDto>>.Fail("Ошибка регистрации узла.", 500);
-
-                    result.Add(dto);
+                    nodesToRegister.Add(dto);;
                 }
+                var isRegisteredNode = RegisterNode(nodesToRegister);
+                if (!isRegisteredNode)
+                    return Result<List<NodeDto>>.Fail("Ошибка регистрации узлов.", 500);
 
-                return Result<List<NodeResponseDto>>.Ok(result, 200);
+                return Result<List<NodeDto>>.Ok(nodesToRegister, 200);
             }
         }
         catch (Exception ex)
         {
-            return Result<List<NodeResponseDto>>.Fail(ex.Message, 500);
+            return Result<List<NodeDto>>.Fail(ex.Message, 500);
         }
     }
     private NodeConfigurationDto GetNodeSettings(string containerName)
@@ -181,28 +217,37 @@ public class NodesService(HttpClient _httpClient) : INodesService
     {
         return "node-container-" + containerName + "-" + Guid.NewGuid();
     }
-    private bool RegisterNode(string url)
+    private bool RegisterNode(string id, string url)
     {
         lock (_lock)
         {
-            var nodeUrl = new Uri(url.EndsWith("/") ? url : url + "/");
-            Nodes.Add(new List<Uri> { nodeUrl });
+            Node node = new()
+            {
+                Id = id,
+                Url = new Uri(url.EndsWith("/") ? url : url + "/")
+            };
+
+            Nodes.Add(new List<Node> { node });
         }
 
         return true;
     }
-    private bool RegisterNode(List<string> urls)
+    private bool RegisterNode(List<NodeDto> nodes)
     {
-        List<Uri> uriList = new();
-        foreach (var url in urls)
+        List<Node> nodesList = new();
+        foreach (var nodeDto in nodes)
         {
-            var nodeUrl = new Uri(url.EndsWith("/") ? url : url + "/");
-            uriList.Add(nodeUrl);
+            Node node = new()
+            {
+                Id = nodeDto.Id,
+                Url = new Uri(nodeDto.Url.EndsWith("/") ? nodeDto.Url : nodeDto.Url + "/")
+            };
+            nodesList.Add(node);
         }
 
         lock (_lock)
         {
-            Nodes.Add(uriList);
+            Nodes.Add(nodesList);
         }
 
         return true;
