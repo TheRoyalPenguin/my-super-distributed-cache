@@ -34,4 +34,23 @@ public class CacheController(ICacheStorage _cacheStorage) : ControllerBase
         _cacheStorage.Cache.AddOrUpdate(cacheItem.Key, cacheItem, (k, old) => cacheItem);
         return Ok();
     }
+
+    [HttpGet("all")]
+    public IActionResult GetAll()
+    {
+        if (_cacheStorage.Cache != null)
+        {
+            var snapshot = _cacheStorage.Cache.ToArray();
+            var result = snapshot.Select(kv => new CacheItemResponseDto
+            {
+                Key = kv.Key,
+                Value = kv.Value.Value,
+                CreatedAt = kv.Value.CreatedAt,
+                LastAccessed = kv.Value.LastAccessed,
+                TTL = kv.Value.TTL
+            }).ToList();
+            return Ok(result);
+        }
+        return NotFound();
+    }
 }
