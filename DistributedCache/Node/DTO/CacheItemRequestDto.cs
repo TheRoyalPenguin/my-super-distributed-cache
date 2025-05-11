@@ -1,6 +1,6 @@
 ﻿namespace Node.DTO;
 
-public class CacheItemDto
+public class CacheItemRequestDto
 {
     public required string Key { get; init; }
     public required object Value { get; set; }
