@@ -16,8 +16,7 @@
   <component name="ChangeListManager">
     <list default="true" id="1125e36b-d9bf-4b6b-b7ee-c27dc4e2bf70" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.DistributedCache/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.DistributedCache/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Client/CacheClusterMonitor.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Client/CacheClusterMonitor.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Client/DistributedCacheClient.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Client/DistributedCacheClient.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/Services/NodesService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/Services/NodesService.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -198,7 +197,7 @@
       <workItem from="1746695887916" duration="1594000" />
       <workItem from="1747052765156" duration="1909000" />
       <workItem from="1747055323210" duration="22000" />
-      <workItem from="1747055373278" duration="1809000" />
+      <workItem from="1747055373278" duration="3269000" />
     </task>
     <servers />
   </component>

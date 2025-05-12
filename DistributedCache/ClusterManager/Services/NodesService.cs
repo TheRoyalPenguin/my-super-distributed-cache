@@ -92,7 +92,7 @@ public class NodesService(HttpClient _httpClient) : INodesService
             foreach (var node in nodeGroup)
             {
                 string baseUrl = node.Url.ToString().EndsWith("/") ? node.Url.ToString() : node.Url.ToString() + "/";
-                var healthUri = new Uri(baseUrl + "api/health"); // сделать health endpoint
+                var healthUri = new Uri(baseUrl + "api/health");
 
                 try
                 {
