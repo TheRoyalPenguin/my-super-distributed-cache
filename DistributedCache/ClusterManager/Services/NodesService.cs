@@ -3,67 +3,120 @@ using ClusterManager.Interfaces;
 using Docker.DotNet.Models;
 using Docker.DotNet;
 using Newtonsoft.Json;
+using ClusterManager.Utils;
+using System;
 
 namespace ClusterManager.Services;
 
-public class NodesService(HttpClient _httpClient) : INodesService
+public class NodesService : INodesService
 {
+    private readonly HttpClient _httpClient;
     private readonly object _lock = new();
-    private readonly List<List<Node>> Nodes = new();
+    private readonly SortedList<string, Node> _nodes = new();
+    private readonly List<string> _sortedKeys;
 
-    public async Task<Result<List<List<NodeWithDataResponseDto>>>> GetAllNodesWithDataAsync()
+    public NodesService(HttpClient httpClient)
     {
-        List<List<NodeWithDataResponseDto>> result = new();
-        foreach (var copyNodes in Nodes)
+        _httpClient = httpClient;
+        _sortedKeys = _nodes.Keys.ToList();
+    }
+
+    public async Task<Result<List<NodeWithDataResponseDto>>> GetAllNodesWithDataAsync()
+    {
+        List<NodeWithDataResponseDto> result = new();
+        foreach (var node in _nodes.Values)
         {
-            List<NodeWithDataResponseDto> nodesWithData = new();
-            foreach (var node in copyNodes)
+            var NodeDataResult = await GetNodeData(node);
+            if (!NodeDataResult.IsSuccess || NodeDataResult.Data == null)
             {
-                string baseUrl = node.Url.ToString().EndsWith("/") ? node.Url.ToString() : node.Url.ToString() + "/";
-                var requestUri = new Uri(baseUrl + "api/cache/all");
-                var response = await _httpClient.GetAsync(requestUri);
+                return Result<List<NodeWithDataResponseDto>>.Fail(NodeDataResult.Error, NodeDataResult.StatusCode);
+            }
 
-                var content = await response.Content.ReadAsStringAsync();
+            NodeWithDataResponseDto nodeWithData = new()
+            {
+                Name = node.Name,
+                Url = node.Url,
+                Id = node.Id,
+                Items = NodeDataResult.Data
+            };
 
-                if (!response.IsSuccessStatusCode)
+            foreach (var replica in node.Replicas)
+            {
+                var ReplicaDataResult = await GetNodeData(replica);
+                if (!ReplicaDataResult.IsSuccess || ReplicaDataResult.Data == null)
                 {
-                    return Result<List<List<NodeWithDataResponseDto>>>.Fail(content, (int)response.StatusCode);
+                    return Result<List<NodeWithDataResponseDto>>.Fail(ReplicaDataResult.Error, ReplicaDataResult.StatusCode);
                 }
 
-                Console.WriteLine(content);
-                var dto = JsonConvert.DeserializeObject<List<CacheItemResponseDto>>(content);
-                NodeWithDataResponseDto nodeWithData = new()
+                NodeWithDataResponseDto replicaWithData = new()
                 {
-                    Url = node.Url,
-                    Id = node.Id,
-                    Items = dto
+                    Name = replica.Name,
+                    Url = replica.Url,
+                    Id = replica.Id,
+                    Items = ReplicaDataResult.Data
                 };
 
-                nodesWithData.Add(nodeWithData);
+                nodeWithData.Replicas.Add(replicaWithData);
             }
-            result.Add(nodesWithData);
+            result.Add(nodeWithData);
         }
 
-        return Result<List<List<NodeWithDataResponseDto>>>.Ok(result, 200);
+        return Result<List<NodeWithDataResponseDto>>.Ok(result, 200);
     }
+
+    private async Task<Result<List<CacheItemResponseDto>>> GetNodeData(Node node)
+    {
+        string baseUrl = node.Url.ToString().EndsWith("/") ? node.Url.ToString() : node.Url.ToString() + "/";
+        var requestUri = new Uri(baseUrl + "api/cache/all");
+        var response = await _httpClient.GetAsync(requestUri);
+        var content = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Result<List<CacheItemResponseDto>>.Fail(content, (int)response.StatusCode);
+        }
+
+        var dto = JsonConvert.DeserializeObject<List<CacheItemResponseDto>>(content);
+
+        return Result<List<CacheItemResponseDto>>.Ok(dto, 200);
+    }
+    private async Task<Result<string>> SetNodeData(Node node, CacheItemRequestDto item)
+    {
+        var url = node.Url;
+
+        string baseUrl = url.ToString().EndsWith("/") ? url.ToString() : url.ToString() + "/";
+        var requestUri = new Uri(baseUrl + "api/cache");
+        var response = await _httpClient.PutAsJsonAsync(requestUri, item);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Result<string>.Fail(await response.Content.ReadAsStringAsync(), (int)response.StatusCode);
+        }
+
+        return Result<string>.Ok("Успешно.", 200);
+    }
+
     public async Task<Result<string?>> SetCacheItemAsync(CacheItemRequestDto item)
     {
         try
         {
-            var nodesUrlIndex = GetNodesUrlListIndexForItemKey(item.Key);
-            var nodes = Nodes[nodesUrlIndex];
+            var nodeKey = GetNodeKeyForItemKey(item.Key);
+            var node = _nodes[nodeKey];
 
-            foreach(var node in nodes)
+            var nodeSetResult = await SetNodeData(node, item);
+
+            if (!nodeSetResult.IsSuccess)
             {
-                var url = node.Url;
+                return Result<string?>.Fail(nodeSetResult.Error, nodeSetResult.StatusCode);
 
-                string baseUrl = url.ToString().EndsWith("/") ? url.ToString() : url.ToString() + "/";
-                var requestUri = new Uri(baseUrl + "api/cache");
-                var response = await _httpClient.PutAsJsonAsync(requestUri, item);
+            }
+            foreach (var replica in node.Replicas)
+            {
+                var replicaSetResult = await SetNodeData(replica, item);
 
-                if (!response.IsSuccessStatusCode)
+                if (!replicaSetResult.IsSuccess)
                 {
-                    return Result<string?>.Fail(await response.Content.ReadAsStringAsync(), (int)response.StatusCode);
+                    return Result<string?>.Fail(replicaSetResult.Error, replicaSetResult.StatusCode);
                 }
             }
 
@@ -74,25 +127,36 @@ public class NodesService(HttpClient _httpClient) : INodesService
             return Result<string?>.Fail(ex.Message, 500);
         }
     }
+    private async Task<Result<HttpResponseMessage?>> GetCacheItem(Node node, string key)
+    {
+        var url = node.Url;
+        string baseUrl = url.ToString().EndsWith("/") ? url.ToString() : url.ToString() + "/";
+        var requestUri = new Uri(baseUrl + "api/cache/" + Uri.EscapeDataString(key));
+        var response = await _httpClient.GetAsync(requestUri);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Result<HttpResponseMessage?>.Fail(await response.Content.ReadAsStringAsync(), (int)response.StatusCode);
+        }
+
+        return Result<HttpResponseMessage?>.Ok(response, (int)response.StatusCode);
+    }
     public async Task<Result<string?>> GetCacheItemAsync(string key)
     {
         try
         {
-            var nodesUrlIndex = GetNodesUrlListIndexForItemKey(key);
-            var nodes = Nodes[nodesUrlIndex];
+            var nodeKey = GetNodeKeyForItemKey(key);
+            var node = _nodes[nodeKey];
             HttpResponseMessage? response = null;
 
-            foreach (var node in nodes)
+            var result = await GetCacheItem(node, key);
+
+            if (!result.IsSuccess)
             {
-                var url = node.Url;
-                string baseUrl = url.ToString().EndsWith("/") ? url.ToString() : url.ToString() + "/";
-                var requestUri = new Uri(baseUrl + "api/cache/" + Uri.EscapeDataString(key));
-                response = await _httpClient.GetAsync(requestUri);
-                if (response.IsSuccessStatusCode)
-                {
-                    break;
-                }
+                return Result<string?>.Fail(result.Error, result.StatusCode);
             }
+
+            response = result.Data;
 
             if (response == null || !response.IsSuccessStatusCode)
             {
@@ -107,9 +171,9 @@ public class NodesService(HttpClient _httpClient) : INodesService
             return Result<string?>.Fail(ex.Message, 500);
         }
     }
-    public async Task<Result<List<NodeDto>>> CreateNodeAsync(string containerName, int copiesCount)
+    public async Task<Result<List<NodeDto>>> CreateNodeAsync(string name, int copiesCount)
     {
-        var nodeSettings = GetNodeSettings(containerName);
+        var nodeSettings = GetNodeSettings(name);
 
         var config = new NodeConfigurationDto
         {
@@ -163,7 +227,8 @@ public class NodesService(HttpClient _httpClient) : INodesService
                 List<NodeDto> nodesToRegister = new();
                 for (int i = 0; i < copiesCount; i++)
                 {
-                    createParams.Name = GenerateContainerName(containerName);
+                    var containerName = GenerateContainerName(name);
+                    createParams.Name = containerName;
                     var response = await dockerClient.Containers.CreateContainerAsync(createParams);
                     var started = await dockerClient.Containers.StartContainerAsync(response.ID, new ContainerStartParameters());
                     if (!started)
@@ -177,6 +242,7 @@ public class NodesService(HttpClient _httpClient) : INodesService
 
                     NodeDto dto = new()
                     {
+                        Name = containerName,
                         Url = nodeUrl,
                         Id = response.ID
                     };
@@ -217,48 +283,79 @@ public class NodesService(HttpClient _httpClient) : INodesService
     {
         return "node-container-" + containerName + "-" + Guid.NewGuid();
     }
-    private bool RegisterNode(string id, string url)
+    private bool RegisterNode(string id, string url, string name)
     {
         lock (_lock)
         {
             Node node = new()
             {
+                Name = name,
                 Id = id,
                 Url = new Uri(url.EndsWith("/") ? url : url + "/")
             };
 
-            Nodes.Add(new List<Node> { node });
+            var hashNode = HashGenerator.GetMd5HashString(name);
+
+            _nodes.Add(hashNode, node);
         }
 
         return true;
     }
     private bool RegisterNode(List<NodeDto> nodes)
     {
-        List<Node> nodesList = new();
-        foreach (var nodeDto in nodes)
+        Node node = new()
         {
-            Node node = new()
+            Name = nodes[0].Name,
+            Id = nodes[0].Id,
+            Url = new Uri(nodes[0].Url.EndsWith("/") ? nodes[0].Url : nodes[0].Url + "/")
+        };
+
+        for (int i = 1; i < nodes.Count; i++)
+        {
+            Node replica = new()
             {
-                Id = nodeDto.Id,
-                Url = new Uri(nodeDto.Url.EndsWith("/") ? nodeDto.Url : nodeDto.Url + "/")
+                Name = nodes[i].Name,
+                Id = nodes[i].Id,
+                Url = new Uri(nodes[i].Url.EndsWith("/") ? nodes[i].Url : nodes[i].Url + "/")
             };
-            nodesList.Add(node);
+
+            node.Replicas.Add(replica);
         }
 
         lock (_lock)
         {
-            Nodes.Add(nodesList);
+            var hashNode = HashGenerator.GetMd5HashString(node.Name);
+
+            _nodes.Add(hashNode, node);
+            UpdateSortedKeys(hashNode);
         }
 
         return true;
     }
-    private int GetNodesUrlListIndexForItemKey(string key)
+    private void UpdateSortedKeys(string hashNode)
     {
-        if (Nodes.Count == 0)
-            throw new Exception();
+        var idx = _sortedKeys.BinarySearch(hashNode, StringComparer.Ordinal);
+        if (idx < 0)
+            idx = ~idx;
 
-        int hash = key.GetHashCode();
-        int index = Math.Abs(hash) % Nodes.Count;
-        return index;
+        _sortedKeys.Insert(idx, hashNode);
+    }
+    private string GetNodeKeyForItemKey(string key)
+    {
+        if (_nodes.Count == 0)
+            throw new InvalidOperationException("Нет доступных нод для кэширования.");
+
+        var hash = HashGenerator.GetMd5HashString(key);
+
+        int idx = _sortedKeys.BinarySearch(hash, StringComparer.Ordinal);
+
+        if (idx < 0)
+        {
+            idx = ~idx;
+            if (idx >= _sortedKeys.Count)
+                idx = 0;
+        }
+
+        return _sortedKeys[idx];
     }
 }

@@ -23,7 +23,7 @@ public class CacheController(ICacheStorage _cacheStorage) : ControllerBase
     }
 
     [HttpPut]
-    public IActionResult Set([FromBody] CacheItemDto item)
+    public IActionResult Set([FromBody] CacheItemRequestDto item)
     {
         var cacheItem = new CacheItem(
             item.Key,
