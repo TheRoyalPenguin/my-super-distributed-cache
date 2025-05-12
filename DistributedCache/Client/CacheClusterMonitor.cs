@@ -13,9 +13,9 @@ public class CacheClusterMonitor
         _clusterManagerUrl = new Uri(clusterManagerUrl.ToString().EndsWith("/") ? clusterManagerUrl.ToString() : clusterManagerUrl.ToString() + "/");
     }
     
-    public async Task<T> GetAllNodeAsync<T>()
+    public async Task<T> GetAllNodesWithDataAsync<T>()
     {
-        var response = await _httpClient.GetAsync(_clusterManagerUrl + $"api/cluster/all-nodes");
+        var response = await _httpClient.GetAsync(_clusterManagerUrl + $"api/monitor/nodes");
         if (response.IsSuccessStatusCode)
         {
             return await response.Content.ReadFromJsonAsync<T>();
@@ -26,9 +26,9 @@ public class CacheClusterMonitor
         }
     }
     
-    public async Task<T> GetInfoNodeAsync<T>(string key)
+    public async Task<T> GetNodeWithDataAsync<T>(string key)
     {
-        var response = await _httpClient.GetAsync(_clusterManagerUrl + $"api/cluster/node-info/" + Uri.EscapeDataString(key));
+        var response = await _httpClient.GetAsync(_clusterManagerUrl + $"api/monitor/node/" + Uri.EscapeDataString(key));
         if (response.IsSuccessStatusCode)
         {
             return await response.Content.ReadFromJsonAsync<T>();
@@ -41,7 +41,7 @@ public class CacheClusterMonitor
     
     public async Task<T> GetStatusNodesAsync<T>()
     {
-        var response = await _httpClient.GetAsync(_clusterManagerUrl + $"api/cluster/nodes-status");
+        var response = await _httpClient.GetAsync(_clusterManagerUrl + $"api/monitor/nodes-status");
         if (response.IsSuccessStatusCode)
         {
             return await response.Content.ReadFromJsonAsync<T>();

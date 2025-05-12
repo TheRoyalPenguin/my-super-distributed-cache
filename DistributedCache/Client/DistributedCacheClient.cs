@@ -14,9 +14,9 @@ public class DistributedCacheClient
         _clusterManagerUrl = new Uri(clusterManagerUrl.ToString().EndsWith("/") ? clusterManagerUrl.ToString() : clusterManagerUrl.ToString() + "/");
     }
 
-    public async Task<T> GetAsync<T>(string key)
+    public async Task<T> GetAsync<T>(string itemKey)
     {
-        var response = await _httpClient.GetAsync(_clusterManagerUrl + $"api/cluster/cache/" + Uri.EscapeDataString(key));
+        var response = await _httpClient.GetAsync(_clusterManagerUrl + $"api/cluster/cache/" + Uri.EscapeDataString(itemKey));
         if (response.IsSuccessStatusCode)
         {
             return await response.Content.ReadFromJsonAsync<T>();
@@ -31,8 +31,25 @@ public class DistributedCacheClient
     {
         var dto = new CacheItemDto
         {
+            Key = key,
             Value = value,
             TTL = ttl
+        };
+
+        var response = await _httpClient.PutAsJsonAsync(_clusterManagerUrl + "api/cluster/cache/" + Uri.EscapeDataString(key), dto);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new Exception();
+        }
+    }
+
+    public async Task SetAsync<T>(string key, T value, int? ttlSeconds = null)
+    {
+        var dto = new CacheItemDto
+        {
+            Key = key,
+            Value = value,
+            TTL = ttlSeconds != null ? TimeSpan.FromSeconds((double)ttlSeconds) : null
         };
 
         var response = await _httpClient.PutAsJsonAsync(_clusterManagerUrl + "api/cluster/cache/" + Uri.EscapeDataString(key), dto);

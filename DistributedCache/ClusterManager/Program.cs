@@ -1,4 +1,7 @@
 
+using ClusterManager.Interfaces;
+using ClusterManager.Services;
+
 namespace ClusterManager
 {
     public class Program
@@ -7,9 +10,11 @@ namespace ClusterManager
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Services.AddSingleton<INodesService, NodesService>();
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+            builder.Services.AddHttpClient();
 
             var app = builder.Build();
 
