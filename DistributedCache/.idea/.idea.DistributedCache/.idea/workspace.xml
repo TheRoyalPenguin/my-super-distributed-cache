@@ -14,7 +14,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1125e36b-d9bf-4b6b-b7ee-c27dc4e2bf70" name="Changes" comment="" />
+    <list default="true" id="1125e36b-d9bf-4b6b-b7ee-c27dc4e2bf70" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.DistributedCache/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.DistributedCache/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Client/CacheClusterMonitor.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Client/CacheClusterMonitor.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Client/DistributedCacheClient.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Client/DistributedCacheClient.cs" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -34,6 +38,7 @@
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;IldarTask&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
@@ -192,6 +197,8 @@
       <workItem from="1746695662474" duration="199000" />
       <workItem from="1746695887916" duration="1594000" />
       <workItem from="1747052765156" duration="1909000" />
+      <workItem from="1747055323210" duration="22000" />
+      <workItem from="1747055373278" duration="1809000" />
     </task>
     <servers />
   </component>

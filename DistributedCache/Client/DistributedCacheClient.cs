@@ -6,24 +6,53 @@ namespace Client;
 public class DistributedCacheClient
 {
     private readonly HttpClient _httpClient;
-    private readonly Uri _clusterManagerUrl;
+    private readonly Uri _primaryManagerUrl;
+    private readonly Uri _backupManagerUrl;
 
-    public DistributedCacheClient(HttpClient httpClient, Uri clusterManagerUrl)
+    public DistributedCacheClient(HttpClient httpClient, Uri primaryManagerUrl, Uri backupManagerUrl)
     {
         _httpClient = httpClient;
-        _clusterManagerUrl = new Uri(clusterManagerUrl.ToString().EndsWith("/") ? clusterManagerUrl.ToString() : clusterManagerUrl.ToString() + "/");
+        _primaryManagerUrl = new Uri(primaryManagerUrl.ToString().TrimEnd('/') + "/");
+        _backupManagerUrl = new Uri(backupManagerUrl.ToString().TrimEnd('/') + "/");
+    }
+
+    private async Task<HttpResponseMessage> TryWithFailover(Func<Uri, Task<HttpResponseMessage>> request)
+    {
+        try
+        {
+            var response = await request(_primaryManagerUrl);
+            return response; 
+        }
+        catch (HttpRequestException)
+        {
+        }
+
+        try
+        {
+            return await request(_backupManagerUrl);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new Exception("Both primary and backup cluster managers failed.", ex);
+        }
     }
 
     public async Task<T> GetAsync<T>(string itemKey)
     {
-        var response = await _httpClient.GetAsync(_clusterManagerUrl + $"api/cluster/cache/" + Uri.EscapeDataString(itemKey));
+        var response = await TryWithFailover(url =>
+            _httpClient.GetAsync(url + $"api/cluster/cache/" + Uri.EscapeDataString(itemKey)));
+
         if (response.IsSuccessStatusCode)
         {
-            return await response.Content.ReadFromJsonAsync<T>();
+            var result = await response.Content.ReadFromJsonAsync<T>();
+            if (result is null)
+                throw new Exception("Response deserialization failed.");
+
+            return result;
         }
         else
         {
-            throw new Exception();
+            throw new Exception($"Cache GET failed with status code {response.StatusCode}");
         }
     }
 
@@ -36,26 +65,18 @@ public class DistributedCacheClient
             TTL = ttl
         };
 
-        var response = await _httpClient.PutAsJsonAsync(_clusterManagerUrl + "api/cluster/cache/" + Uri.EscapeDataString(key), dto);
+        var response = await TryWithFailover(url =>
+            _httpClient.PutAsJsonAsync(url + "api/cluster/cache/" + Uri.EscapeDataString(key), dto));
+
         if (!response.IsSuccessStatusCode)
         {
-            throw new Exception();
+            throw new Exception($"Cache SET failed with status code {response.StatusCode}");
         }
     }
 
     public async Task SetAsync<T>(string key, T value, int? ttlSeconds = null)
     {
-        var dto = new CacheItemDto
-        {
-            Key = key,
-            Value = value,
-            TTL = ttlSeconds != null ? TimeSpan.FromSeconds((double)ttlSeconds) : null
-        };
-
-        var response = await _httpClient.PutAsJsonAsync(_clusterManagerUrl + "api/cluster/cache/" + Uri.EscapeDataString(key), dto);
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new Exception();
-        }
+        await SetAsync(key, value, ttlSeconds.HasValue ? TimeSpan.FromSeconds(ttlSeconds.Value) : null);
     }
 }
+
