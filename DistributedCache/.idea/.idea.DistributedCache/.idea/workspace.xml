@@ -10,6 +10,7 @@
     <projectFile profileName="http">Node/Node.csproj</projectFile>
     <projectFile profileName="https">Node/Node.csproj</projectFile>
   </component>
+<<<<<<< Updated upstream
   <component name="AutoImportSettings">
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
@@ -18,6 +19,10 @@
       <change beforePath="$PROJECT_DIR$/.idea/.idea.DistributedCache/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.DistributedCache/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ClusterManager/Services/NodesService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/Services/NodesService.cs" afterDir="false" />
     </list>
+=======
+  <component name="ChangeListManager">
+    <list default="true" id="102a93ce-6302-4a77-b6f2-d2454baa6a6b" name="Changes" comment="" />
+>>>>>>> Stashed changes
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -26,14 +31,23 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
   </component>
+<<<<<<< Updated upstream
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 0
 }</component>
   <component name="ProjectId" id="2vlnHTmS2Vsto39z9vGyDuv3nzt" />
+=======
+  <component name="ProjectColorInfo"><![CDATA[{
+  "customColor": "",
+  "associatedIndex": 0
+}]]></component>
+  <component name="ProjectId" id="2x2s24fD8SwOFma7jExAD6Cevit" />
+>>>>>>> Stashed changes
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
+<<<<<<< Updated upstream
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
@@ -46,6 +60,16 @@
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
+=======
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "develop",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+>>>>>>> Stashed changes
   <component name="RunManager" selected="Docker.ClusterManager/Dockerfile">
     <configuration name="ClusterManager: IIS Express" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
       <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/ClusterManager/ClusterManager.csproj" />
@@ -162,16 +186,21 @@
       <method v="2" />
     </configuration>
     <configuration default="true" type="docker-deploy" factoryName="dockerfile" temporary="true">
+<<<<<<< Updated upstream
       <deployment type="dockerfile">
         <settings />
       </deployment>
       <EXTENSION ID="com.jetbrains.rider.docker.debug" isFastModeEnabled="true" isSslEnabled="false" />
+=======
+      <deployment type="dockerfile" />
+>>>>>>> Stashed changes
       <method v="2" />
     </configuration>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
+<<<<<<< Updated upstream
       <changelist id="1125e36b-d9bf-4b6b-b7ee-c27dc4e2bf70" name="Changes" comment="" />
       <created>1744728442333</created>
       <option name="number" value="Default" />
@@ -198,6 +227,14 @@
       <workItem from="1747052765156" duration="1909000" />
       <workItem from="1747055323210" duration="22000" />
       <workItem from="1747055373278" duration="3269000" />
+=======
+      <changelist id="102a93ce-6302-4a77-b6f2-d2454baa6a6b" name="Changes" comment="" />
+      <created>1747147294104</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1747147294104</updated>
+      <workItem from="1747147295409" duration="111000" />
+>>>>>>> Stashed changes
     </task>
     <servers />
   </component>

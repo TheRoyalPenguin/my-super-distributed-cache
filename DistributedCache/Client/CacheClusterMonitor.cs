@@ -23,7 +23,6 @@ public class CacheClusterMonitor
         }
         catch (HttpRequestException)
         {
-            // Сетевой сбой — пробуем backup
         }
 
         try
