@@ -5,12 +5,12 @@ namespace ClusterManager.Controllers;
 
 [Route("api/monitor")]
 [ApiController]
-public class MonitorController(INodesService _nodesService) : ControllerBase
+public class MonitorController(INodeManager _manager) : ControllerBase
 {
     [HttpGet("nodes")]
     public async Task<IActionResult> GetAllNodesWithData()
     {
-        var result = await _nodesService.GetAllNodesWithDataAsync();
+        var result = await _manager.GetAllNodesWithDataAsync();
 
         if (!result.IsSuccess)
             return StatusCode(result.StatusCode, result.Error);

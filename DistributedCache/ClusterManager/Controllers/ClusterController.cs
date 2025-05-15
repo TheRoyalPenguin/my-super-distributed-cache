@@ -6,12 +6,12 @@ namespace ClusterManager.Controllers;
 
 [Route("api/cluster")]
 [ApiController]
-public class ClusterController(INodesService _nodesService) : ControllerBase
+public class ClusterController(INodeManager _manager, INodeRegistry _nodeRegistry) : ControllerBase
 {
     [HttpGet("cache/{key}")]
     public async Task<IActionResult> GetCacheItem(string key)
     {
-        var result = await _nodesService.GetCacheItemAsync(key);
+        var result = await _manager.GetCacheItemAsync(key);
 
         if (!result.IsSuccess)
             return StatusCode(result.StatusCode, result.Error);
@@ -22,7 +22,7 @@ public class ClusterController(INodesService _nodesService) : ControllerBase
     [HttpPut("cache")]
     public async Task<IActionResult> SetCacheItem([FromBody] CacheItemRequestDto item)
     {
-        var result = await _nodesService.SetCacheItemAsync(item);
+        var result = await _manager.SetCacheItemAsync(item);
 
         if (!result.IsSuccess)
             return StatusCode(result.StatusCode, result.Error);
@@ -35,7 +35,18 @@ public class ClusterController(INodesService _nodesService) : ControllerBase
     {
         if (copiesCount < 1 || copiesCount > 10)
             return BadRequest("Количество копий одного узла может быть от 1 до 10");
-        var result = await _nodesService.CreateNodeAsync(containerName, copiesCount);
+        var result = await _nodeRegistry.CreateNodeAsync(containerName, copiesCount);
+
+        if (!result.IsSuccess)
+            return StatusCode(result.StatusCode, result.Error);
+
+        return Ok(result.Data);
+    }
+
+    [HttpDelete("nodes/delete/{containerName}")]
+    public async Task<IActionResult> DeleteNode([FromRoute] string containerName, [FromQuery] bool force)
+    {
+        var result = await _nodeRegistry.ForceDeleteNodeByNameAsync(containerName);
 
         if (!result.IsSuccess)
             return StatusCode(result.StatusCode, result.Error);

@@ -10,7 +10,10 @@ namespace ClusterManager
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.Services.AddSingleton<INodesService, NodesService>();
+            builder.Services.AddSingleton<ICacheStorage, CacheStorage>();
+            builder.Services.AddHostedService<NodeRestoreService>();
+            builder.Services.AddScoped<INodeRegistry, NodeRegistry>();
+            builder.Services.AddScoped<INodeManager, NodeManager>();
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
