@@ -1,0 +1,99 @@
+﻿using ClusterManager.DTO;
+using ClusterManager.Interfaces;
+using Docker.DotNet;
+using Docker.DotNet.Models;
+
+namespace ClusterManager.Services;
+
+public class NodeRestoreService : BackgroundService
+{
+    private readonly ICacheStorage _cache;
+    private const string baseUrl = "http://localhost:";
+    private readonly Uri _dockerUri = new Uri("npipe://./pipe/docker_engine");
+    public NodeRestoreService(HttpClient httpClient, ICacheStorage cacheStorage)
+    {
+        _cache = cacheStorage;
+    }
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        using (var dockerClient = new DockerClientConfiguration(_dockerUri).CreateClient())
+        {
+            dockerClient.DefaultTimeout = TimeSpan.FromMinutes(5);
+
+            var containers = await dockerClient.Containers.ListContainersAsync(
+                new ContainersListParameters
+                {
+                    All = true
+                });
+
+            Dictionary<string, List<NodeDto>> nodes = new();
+            List<NodeDto> masterNodes = new();
+            foreach (var container in containers)
+            {
+                if (container.Labels["isReplica"] == "false")
+                {
+                    var name = container.Names[0].TrimStart('/');
+                    NodeDto node = new()
+                    {
+                        Name = name,
+                        Url = baseUrl + container.Ports.FirstOrDefault()?.PublicPort,
+                        Id = container.ID
+                    };
+
+                    nodes[name] = new List<NodeDto>();
+                    masterNodes.Add(node);
+                }
+            }
+            foreach (var container in containers)
+            {
+                if (container.Labels["isReplica"] == "true")
+                {
+                    NodeDto node = new()
+                    {
+                        Name = container.Names[0].TrimStart('/'),
+                        Url = baseUrl + container.Ports.FirstOrDefault()?.PublicPort,
+                        Id = container.ID
+                    };
+
+                    if (nodes.TryGetValue(container.Labels["masterName"], out var value))
+                    {
+                        value.Add(node);
+                    }
+                }
+            }
+            foreach (var master in masterNodes)
+            {
+                if (nodes.TryGetValue(master.Name, out var value))
+                {
+                    RegisterNode(master, value);
+                }
+            }
+        }
+    }
+
+    private bool RegisterNode(NodeDto masterNodeDto, List<NodeDto> replicas)
+    {
+        Node masterNode = new()
+        {
+            Name = masterNodeDto.Name,
+            Id = masterNodeDto.Id,
+            Url = new Uri(masterNodeDto.Url.EndsWith("/") ? masterNodeDto.Url : masterNodeDto.Url + "/")
+        };
+
+        for (int i = 0; i < replicas.Count; i++)
+        {
+            Node replica = new()
+            {
+                Name = replicas[i].Name,
+                Id = replicas[i].Id,
+                Url = new Uri(replicas[i].Url.EndsWith("/") ? replicas[i].Url : replicas[i].Url + "/")
+            };
+
+            masterNode.Replicas.Add(replica);
+        }
+
+        _cache.AddNode(masterNode.Name, masterNode);
+
+        return true;
+    }
+}
