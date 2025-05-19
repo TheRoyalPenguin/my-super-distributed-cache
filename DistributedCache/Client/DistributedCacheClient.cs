@@ -5,7 +5,7 @@ namespace Client;
 
 public class DistributedCacheClient
 {
-    private readonly HttpClient _httpClient;
+   private readonly HttpClient _httpClient;
     private readonly Uri _primaryManagerUrl;
     private readonly Uri _backupManagerUrl;
 
@@ -78,5 +78,28 @@ public class DistributedCacheClient
     {
         await SetAsync(key, value, ttlSeconds.HasValue ? TimeSpan.FromSeconds(ttlSeconds.Value) : null);
     }
-}
+    public async Task<string> CreateNodeAsync(string containerName, int copiesCount = 1)
+    {
+        if (copiesCount < 1 || copiesCount > 10)
+            throw new ArgumentOutOfRangeException(nameof(copiesCount), "Количество копий должно быть от 1 до 10");
 
+        var response = await TryWithFailover(url =>
+            _httpClient.PostAsync(url + $"api/cluster/nodes/create/{Uri.EscapeDataString(containerName)}/{copiesCount}", null));
+
+        if (!response.IsSuccessStatusCode)
+            throw new Exception($"Node creation failed with status code {response.StatusCode}");
+
+        return await response.Content.ReadAsStringAsync();
+    }
+
+    public async Task<string> DeleteNodeAsync(string containerName, bool force = false)
+    {
+        var response = await TryWithFailover(url =>
+            _httpClient.DeleteAsync(url + $"api/cluster/nodes/delete/{Uri.EscapeDataString(containerName)}?force={force.ToString().ToLower()}"));
+
+        if (!response.IsSuccessStatusCode)
+            throw new Exception($"Node deletion failed with status code {response.StatusCode}");
+
+        return await response.Content.ReadAsStringAsync();
+    }
+}

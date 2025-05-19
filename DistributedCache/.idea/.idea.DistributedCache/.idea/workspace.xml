@@ -10,19 +10,24 @@
     <projectFile profileName="http">Node/Node.csproj</projectFile>
     <projectFile profileName="https">Node/Node.csproj</projectFile>
   </component>
-<<<<<<< Updated upstream
   <component name="AutoImportSettings">
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1125e36b-d9bf-4b6b-b7ee-c27dc4e2bf70" name="Changes" comment="">
+    <list default="true" id="d11c1fa1-d759-434f-89e7-985c1f5f6c96" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.DistributedCache/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.DistributedCache/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ClusterManager/Services/NodesService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/Services/NodesService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Client/CacheClusterMonitor.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Client/CacheClusterMonitor.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Client/DistributedCacheClient.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Client/DistributedCacheClient.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/Controllers/ClusterController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/Controllers/ClusterController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/Controllers/MonitorController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/Controllers/MonitorController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/DTO/Node.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/DTO/Node.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/DTO/NodeDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/DTO/NodeDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/DTO/NodeStatusDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/DTO/NodeStatusDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/DTO/NodeWithDataResponseDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/DTO/NodeWithDataResponseDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/Interfaces/INodesService.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/Program.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/Services/NodesService.cs" beforeDir="false" />
     </list>
-=======
-  <component name="ChangeListManager">
-    <list default="true" id="102a93ce-6302-4a77-b6f2-d2454baa6a6b" name="Changes" comment="" />
->>>>>>> Stashed changes
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -31,45 +36,26 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
   </component>
-<<<<<<< Updated upstream
   <component name="ProjectColorInfo">{
-  &quot;associatedIndex&quot;: 0
+  &quot;associatedIndex&quot;: 6
 }</component>
-  <component name="ProjectId" id="2vlnHTmS2Vsto39z9vGyDuv3nzt" />
-=======
-  <component name="ProjectColorInfo"><![CDATA[{
-  "customColor": "",
-  "associatedIndex": 0
-}]]></component>
-  <component name="ProjectId" id="2x2s24fD8SwOFma7jExAD6Cevit" />
->>>>>>> Stashed changes
+  <component name="ProjectId" id="2x2xHSvp15RHr6co8QSR4A1821m" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-<<<<<<< Updated upstream
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;IldarTask&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
-  }
-}</component>
-=======
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "develop",
+    "git-widget-placeholder": "IldarTask",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
->>>>>>> Stashed changes
   <component name="RunManager" selected="Docker.ClusterManager/Dockerfile">
     <configuration name="ClusterManager: IIS Express" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
       <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/ClusterManager/ClusterManager.csproj" />
@@ -165,7 +151,7 @@
       <deployment type="dockerfile">
         <settings>
           <option name="containerName" value="clustermanager" />
-          <option name="contextFolderPath" value="D:\Учеба\Марченко\my-super-distributed-cache\DistributedCache" />
+          <option name="contextFolderPath" value="D:\Учеба\Марченко\Амаль\DistributedCache" />
           <option name="publishAllPorts" value="true" />
           <option name="sourceFilePath" value="ClusterManager/Dockerfile" />
         </settings>
@@ -177,7 +163,7 @@
       <deployment type="dockerfile">
         <settings>
           <option name="containerName" value="node" />
-          <option name="contextFolderPath" value="D:\Учеба\Марченко\my-super-distributed-cache\DistributedCache" />
+          <option name="contextFolderPath" value="D:\Учеба\Марченко\Амаль\DistributedCache" />
           <option name="publishAllPorts" value="true" />
           <option name="sourceFilePath" value="Node/Dockerfile" />
         </settings>
@@ -186,55 +172,26 @@
       <method v="2" />
     </configuration>
     <configuration default="true" type="docker-deploy" factoryName="dockerfile" temporary="true">
-<<<<<<< Updated upstream
       <deployment type="dockerfile">
         <settings />
       </deployment>
       <EXTENSION ID="com.jetbrains.rider.docker.debug" isFastModeEnabled="true" isSslEnabled="false" />
-=======
-      <deployment type="dockerfile" />
->>>>>>> Stashed changes
       <method v="2" />
     </configuration>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-<<<<<<< Updated upstream
-      <changelist id="1125e36b-d9bf-4b6b-b7ee-c27dc4e2bf70" name="Changes" comment="" />
-      <created>1744728442333</created>
+      <changelist id="d11c1fa1-d759-434f-89e7-985c1f5f6c96" name="Changes" comment="" />
+      <created>1747149881551</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1744728442333</updated>
-      <workItem from="1744728443948" duration="69000" />
-      <workItem from="1744728574616" duration="3720000" />
-      <workItem from="1744733512991" duration="63000" />
-      <workItem from="1744888856421" duration="348000" />
-      <workItem from="1744913845047" duration="2505000" />
-      <workItem from="1745040218160" duration="1172000" />
-      <workItem from="1745066476022" duration="930000" />
-      <workItem from="1745158806490" duration="981000" />
-      <workItem from="1745159882580" duration="942000" />
-      <workItem from="1745224665525" duration="1116000" />
-      <workItem from="1745227252073" duration="2231000" />
-      <workItem from="1745319832178" duration="4389000" />
-      <workItem from="1745863372819" duration="88000" />
-      <workItem from="1745863474008" duration="3159000" />
-      <workItem from="1746619990728" duration="77000" />
-      <workItem from="1746620092529" duration="1928000" />
-      <workItem from="1746695662474" duration="199000" />
-      <workItem from="1746695887916" duration="1594000" />
-      <workItem from="1747052765156" duration="1909000" />
-      <workItem from="1747055323210" duration="22000" />
-      <workItem from="1747055373278" duration="3269000" />
-=======
-      <changelist id="102a93ce-6302-4a77-b6f2-d2454baa6a6b" name="Changes" comment="" />
-      <created>1747147294104</created>
-      <option name="number" value="Default" />
-      <option name="presentableId" value="Default" />
-      <updated>1747147294104</updated>
-      <workItem from="1747147295409" duration="111000" />
->>>>>>> Stashed changes
+      <updated>1747149881551</updated>
+      <workItem from="1747149882645" duration="1291000" />
+      <workItem from="1747561187833" duration="3304000" />
+      <workItem from="1747579002019" duration="708000" />
+      <workItem from="1747651584262" duration="2722000" />
+      <workItem from="1747660228830" duration="23000" />
     </task>
     <servers />
   </component>

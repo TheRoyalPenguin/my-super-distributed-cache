@@ -2,10 +2,9 @@
 
 namespace ClusterManager.Interfaces;
 
-public interface INodesService
+public interface INodeManager
 {
     Task<Result<string?>> SetCacheItemAsync(CacheItemRequestDto item);
-    Task<Result<List<NodeDto>>> CreateNodeAsync(string containerName, int copiesCount);
     Task<Result<string?>> GetCacheItemAsync(string key);
     Task<Result<List<NodeWithDataResponseDto>>> GetAllNodesWithDataAsync();
     Task<Result<NodeWithDataResponseDto>> GetNodeWithDataAsync(string key);

@@ -5,23 +5,22 @@ namespace ClusterManager.Controllers;
 
 [Route("api/monitor")]
 [ApiController]
-public class MonitorController(INodesService _nodesService) : ControllerBase
+public class MonitorController(INodeManager _manager) : ControllerBase
 {
     [HttpGet("nodes")]
     public async Task<IActionResult> GetAllNodesWithData()
     {
-        var result = await _nodesService.GetAllNodesWithDataAsync();
+        var result = await _manager.GetAllNodesWithDataAsync();
 
         if (!result.IsSuccess)
             return StatusCode(result.StatusCode, result.Error);
 
         return Ok(result.Data);
     }
-    
     [HttpGet("node/{key}")]
     public async Task<IActionResult> GetNodeWithData(string key)
     {
-        var result = await _nodesService.GetNodeWithDataAsync(key);
+        var result = await _manager.GetNodeWithDataAsync(key);
 
         if (!result.IsSuccess)
             return StatusCode(result.StatusCode, result.Error);
@@ -32,7 +31,7 @@ public class MonitorController(INodesService _nodesService) : ControllerBase
     [HttpGet("nodes/status")]
     public async Task<IActionResult> GetAllNodesStatus()
     {
-        var result = await _nodesService.GetAllNodeStatusesAsync();
+        var result = await _manager.GetAllNodeStatusesAsync();
 
         if (!result.IsSuccess)
         {
@@ -45,7 +44,7 @@ public class MonitorController(INodesService _nodesService) : ControllerBase
     [HttpGet("node/status/{key}")]
     public async Task<IActionResult> GetNodesStatus(string key)
     {
-        var result = await _nodesService.GetNodeStatusAsync(key);
+        var result = await _manager.GetNodeStatusAsync(key);
 
         if (!result.IsSuccess)
         {
