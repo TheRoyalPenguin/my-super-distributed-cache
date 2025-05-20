@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Distributed Cache Client</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+    <h1>Distributed Cache Dashboard</h1>
+    <div class="tab-switcher">
+        <button onclick="toggleTheme()" class="theme-switcher">Тема</button>
+        <button onclick="switchTab('manager')">Manager</button>
+        <button onclick="switchTab('monitor')">Monitor</button>
+    </div>
+</header>
+
+<main>
+    <div id="managerTab" class="tab">
+        <section id="getCache">
+            <h3>Get Cache Item</h3>
+            <input type="text" id="getKey" placeholder="Enter key">
+            <button onclick="getCache()">Get</button>
+            <div id="getResult"></div>
+        </section>
+
+        <section id="setCache">
+            <h3>Set Cache Item</h3>
+            <input type="text" id="setKey" placeholder="Enter key">
+            <input type="text" id="setValue" placeholder="Enter value">
+            <input type="number" id="setTTL" placeholder="TTL (seconds)">
+            <button onclick="setCache()">Set</button>
+            <div id="setResult"></div>
+        </section>
+
+        <section id="createNode">
+            <h3>Create Node</h3>
+            <input type="text" id="nodeName" placeholder="Container name">
+            <input type="number" id="copiesCount" value="1" min="1" max="10">
+            <button onclick="createNode()">Create</button>
+            <div id="createResult"></div>
+        </section>
+
+        <section id="deleteNode">
+            <h3>Delete Node</h3>
+            <input type="text" id="deleteName" placeholder="Container name">
+            <label><input type="checkbox" id="forceDelete"> Force</label>
+            <button onclick="deleteNode()">Delete</button>
+            <div id="deleteResult"></div>
+        </section>
+    </div>
+
+    <div id="monitorTab" class="tab hidden">
+        <section id="allNodesData">
+            <h3>All Nodes With Data</h3>
+            <button onclick="getAllNodesData()">Fetch</button>
+            <div id="allNodesDataResult"></div>
+        </section>
+
+        <section id="singleNodeData">
+            <h3>Single Node With Data</h3>
+            <input type="text" id="monitorNodeKey" placeholder="Node name">
+            <button onclick="getSingleNodeData()">Fetch</button>
+            <div id="nodeDataResult"></div>
+        </section>
+
+        <section id="allNodesStatus">
+            <h3>All Nodes Status</h3>
+            <button onclick="getAllNodesStatus()">Fetch</button>
+            <div id="allNodesStatusResult"></div>
+        </section>
+
+        <section id="singleNodeStatus">
+            <h3>Single Node Status</h3>
+            <input type="text" id="statusNodeKey" placeholder="Node name">
+            <button onclick="getSingleNodeStatus()">Fetch</button>
+            <div id="nodeStatusResult"></div>
+        </section>
+    </div>
+</main>
+<div id="toast" class="toast hidden"></div>
+<script src="app.js"></script>
+</body>
+</html>

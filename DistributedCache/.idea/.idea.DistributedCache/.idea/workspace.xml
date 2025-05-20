@@ -16,22 +16,20 @@
   <component name="ChangeListManager">
     <list default="true" id="d11c1fa1-d759-434f-89e7-985c1f5f6c96" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.DistributedCache/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.DistributedCache/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Client/CacheClusterMonitor.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Client/CacheClusterMonitor.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Client/DistributedCacheClient.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Client/DistributedCacheClient.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ClusterManager/Controllers/ClusterController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/Controllers/ClusterController.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ClusterManager/Controllers/MonitorController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/Controllers/MonitorController.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ClusterManager/DTO/Node.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/DTO/Node.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ClusterManager/DTO/NodeDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/DTO/NodeDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ClusterManager/DTO/NodeStatusDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/DTO/NodeStatusDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ClusterManager/DTO/NodeWithDataResponseDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/DTO/NodeWithDataResponseDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ClusterManager/Interfaces/INodesService.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ClusterManager/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/Program.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ClusterManager/Services/NodesService.cs" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="HTML File" />
+        <option value="CSS File" />
+        <option value="JavaScript File" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
@@ -46,8 +44,10 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "DefaultHtmlFileTemplate": "HTML File",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "git-widget-placeholder": "IldarTask",
+    "list.type.of.created.stylesheet": "CSS",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -192,6 +192,7 @@
       <workItem from="1747579002019" duration="708000" />
       <workItem from="1747651584262" duration="2722000" />
       <workItem from="1747660228830" duration="23000" />
+      <workItem from="1747737644609" duration="3819000" />
     </task>
     <servers />
   </component>

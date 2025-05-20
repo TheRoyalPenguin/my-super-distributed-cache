@@ -1,0 +1,174 @@
+:root {
+    --bg-color: #fdfdfd;
+    --text-color: #222;
+    --primary-color: #d3a675;
+    --accent-color: #a35c2e;
+    --input-bg: #fff;
+    --result-bg: #f2f2f2;
+    --result-text: #333;
+    --card-bg: #ffffff;
+}
+
+body.dark {
+    --bg-color: #2e1f16;
+    --text-color: #f2e6d8;
+    --primary-color: #6f4e37;
+    --accent-color: #8b5a2b;
+    --input-bg: #3e2b21;
+    --result-bg: #3e2b21;
+    --result-text: #ffdeba;
+    --card-bg: #4a3424;
+}
+
+body {
+    font-family: sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 0 20px;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+header {
+    padding: 20px 0;
+    text-align: center;
+}
+
+h1 {
+    color: var(--accent-color);
+}
+
+.theme-switcher {
+    text-align: right;
+    margin-top: -40px;
+}
+
+.theme-switcher button {
+    padding: 6px 12px;
+    background-color: var(--primary-color);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+}
+
+.theme-switcher button:hover {
+    background-color: var(--accent-color);
+}
+
+.tab-switcher {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.tab-switcher button {
+    margin: 0 10px;
+    padding: 8px 16px;
+    background-color: var(--primary-color);
+    border: none;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.tab-switcher button:hover {
+    background-color: var(--accent-color);
+}
+
+.menu {
+    background-color: var(--card-bg);
+    padding: 10px 20px;
+    margin: 20px 0;
+    border-radius: 8px;
+}
+
+.menu h2 {
+    color: var(--accent-color);
+}
+
+.menu ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.menu li {
+    margin: 5px 0;
+}
+
+.menu a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.menu a:hover {
+    text-decoration: underline;
+}
+
+.tab section {
+    background-color: var(--card-bg);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+}
+
+input, button {
+    margin: 5px;
+    padding: 6px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+input {
+    background-color: var(--input-bg);
+    color: var(--text-color);
+}
+
+button {
+    background-color: var(--primary-color);
+    color: white;
+    cursor: pointer;
+    border: none;
+}
+
+button:hover {
+    background-color: var(--accent-color);
+}
+
+.hidden {
+    display: none;
+}
+
+div[id$="Result"] {
+    margin-top: 10px;
+    background-color: var(--result-bg);
+    padding: 10px;
+    border-radius: 6px;
+    white-space: pre-wrap;
+    font-family: monospace;
+    color: var(--result-text);
+}
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #ff4d4d;
+    color: white;
+    padding: 12px 18px;
+    border-radius: 6px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    font-weight: bold;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+body.dark .toast {
+    background-color: #cc3b3b;
+}
