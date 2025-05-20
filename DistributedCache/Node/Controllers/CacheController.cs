@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Node.DTO;
+using Node.Interfaces;
 using Node.Models;
-using Node.Services;
 
 namespace Node.Controllers;
 
@@ -15,7 +15,10 @@ public class CacheController(ICacheStorage _cacheStorage) : ControllerBase
         if (_cacheStorage.Cache.TryGetValue(key, out var item))
         {
             if (item.IsExpired())
+            {
+                _cacheStorage.Cache.TryRemove(key, out var _);
                 return NotFound("TTL has expired.");
+            }
             item.UpdateAccessTime();
             return Ok(item.Value);
         }
