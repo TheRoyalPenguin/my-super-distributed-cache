@@ -1,7 +1,7 @@
 ﻿using Node.Models;
 using System.Collections.Concurrent;
 
-namespace Node.Services;
+namespace Node.Interfaces;
 
 public interface ICacheStorage
 {
