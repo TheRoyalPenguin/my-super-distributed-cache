@@ -6,11 +6,11 @@ namespace ClusterManager.Services;
 
 public class NodeManager : INodeManager
 {
-    private readonly HttpClient _httpClient;
+    private readonly IHttpService _httpService;
     private readonly ICacheStorage _cache;
-    public NodeManager(HttpClient httpClient, INodeRegistry nodeRegistry, ICacheStorage cacheStorage)
+    public NodeManager(IHttpService httpService, INodeRegistry nodeRegistry, ICacheStorage cacheStorage)
     {
-        _httpClient = httpClient;
+        _httpService = httpService;
         _cache = cacheStorage;
     }
 
@@ -22,7 +22,7 @@ public class NodeManager : INodeManager
         List<NodeWithDataResponseDto> result = new();
         foreach (var node in nodes.Values)
         {
-            var NodeDataResult = await GetNodeData(node);
+            var NodeDataResult = await GetNodeDataAsync(node);
             if (!NodeDataResult.IsSuccess || NodeDataResult.Data == null)
             {
                 return Result<List<NodeWithDataResponseDto>>.Fail(NodeDataResult.Error, NodeDataResult.StatusCode);
@@ -38,7 +38,7 @@ public class NodeManager : INodeManager
 
             foreach (var replica in node.Replicas)
             {
-                var ReplicaDataResult = await GetNodeData(replica);
+                var ReplicaDataResult = await GetNodeDataAsync(replica);
                 if (!ReplicaDataResult.IsSuccess || ReplicaDataResult.Data == null)
                 {
                     return Result<List<NodeWithDataResponseDto>>.Fail(ReplicaDataResult.Error, ReplicaDataResult.StatusCode);
@@ -60,12 +60,13 @@ public class NodeManager : INodeManager
         return Result<List<NodeWithDataResponseDto>>.Ok(result, 200);
     }
 
-    private async Task<Result<List<CacheItemResponseDto>>> GetNodeData(Node node)
+    private async Task<Result<List<CacheItemResponseDto>>> GetNodeDataAsync(Node node)
     {
-        string baseUrl = node.Url.ToString().EndsWith("/") ? node.Url.ToString() : node.Url.ToString() + "/";
-        var requestUri = new Uri(baseUrl + "api/cache/all");
-        var response = await _httpClient.GetAsync(requestUri);
-        var content = await response.Content.ReadAsStringAsync();
+        var responseResult = await _httpService.SendRequestAsync<object>(node.Url.ToString(), "api/cache/all", HttpMethodEnum.Get);
+        if (!responseResult.IsSuccess)
+            return Result<List<CacheItemResponseDto>>.Fail(string.IsNullOrEmpty(responseResult.Error) ? "Ошибка получения данных узла." : responseResult.Error, responseResult.StatusCode);
+        var response = responseResult.Data;
+        var content = await response!.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
         {
@@ -76,18 +77,19 @@ public class NodeManager : INodeManager
 
         return Result<List<CacheItemResponseDto>>.Ok(dto, 200);
     }
-    private async Task<Result<string>> SetNodeData(Node node, CacheItemRequestDto item)
+    private async Task<Result<string>> SetNodeDataAsync(Node node, CacheItemRequestDto item)
     {
-        var url = node.Url;
+        var responseResult = await _httpService.SendRequestAsync<CacheItemRequestDto>(node.Url.ToString(), "api/cache/single", HttpMethodEnum.Put, item);
+        if (!responseResult.IsSuccess)
+            return Result<string>.Fail(string.IsNullOrEmpty(responseResult.Error) ? "Ошибка добавления данных в узел." : responseResult.Error, responseResult.StatusCode);
 
-        string baseUrl = url.ToString().EndsWith("/") ? url.ToString() : url.ToString() + "/";
-        var requestUri = new Uri(baseUrl + "api/cache");
-        var response = await _httpClient.PutAsJsonAsync(requestUri, item);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            return Result<string>.Fail(await response.Content.ReadAsStringAsync(), (int)response.StatusCode);
-        }
+        return Result<string>.Ok("Успешно.", 200);
+    }
+    private async Task<Result<string>> SetNodeDataAsync(Node node, List<CacheItemRequestDto> items)
+    {
+        var responseResult = await _httpService.SendRequestAsync<List<CacheItemRequestDto>>(node.Url.ToString(), "api/cache/multiple", HttpMethodEnum.Put, items);
+        if (!responseResult.IsSuccess)
+            return Result<string>.Fail(string.IsNullOrEmpty(responseResult.Error) ? "Ошибка добавления данных в узел." : responseResult.Error, responseResult.StatusCode);
 
         return Result<string>.Ok("Успешно.", 200);
     }
@@ -99,7 +101,7 @@ public class NodeManager : INodeManager
             var nodeKey = _cache.GetNodeKeyForItemKey(item.Key);
             var node = _cache.Nodes[nodeKey];
 
-            var nodeSetResult = await SetNodeData(node, item);
+            var nodeSetResult = await SetNodeDataAsync(node, item);
 
             if (!nodeSetResult.IsSuccess)
             {
@@ -108,7 +110,7 @@ public class NodeManager : INodeManager
             }
             foreach (var replica in node.Replicas)
             {
-                var replicaSetResult = await SetNodeData(replica, item);
+                var replicaSetResult = await SetNodeDataAsync(replica, item);
 
                 if (!replicaSetResult.IsSuccess)
                 {
@@ -125,15 +127,11 @@ public class NodeManager : INodeManager
     }
     private async Task<Result<HttpResponseMessage?>> GetCacheItem(Node node, string key)
     {
-        var url = node.Url;
-        string baseUrl = url.ToString().EndsWith("/") ? url.ToString() : url.ToString() + "/";
-        var requestUri = new Uri(baseUrl + "api/cache/" + Uri.EscapeDataString(key));
-        var response = await _httpClient.GetAsync(requestUri);
+        var responseResult = await _httpService.SendRequestAsync<object>(node.Url.ToString(), "api/cache/" + Uri.EscapeDataString(key), HttpMethodEnum.Get);
+        if (!responseResult.IsSuccess)
+            return Result<HttpResponseMessage?>.Fail(string.IsNullOrEmpty(responseResult.Error) ? "Ошибка получения данных узла." : responseResult.Error, responseResult.StatusCode);
 
-        if (!response.IsSuccessStatusCode)
-        {
-            return Result<HttpResponseMessage?>.Fail(await response.Content.ReadAsStringAsync(), (int)response.StatusCode);
-        }
+        var response = responseResult.Data;
 
         return Result<HttpResponseMessage?>.Ok(response, (int)response.StatusCode);
     }
