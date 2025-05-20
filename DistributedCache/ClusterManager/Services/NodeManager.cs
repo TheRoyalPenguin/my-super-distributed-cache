@@ -8,6 +8,7 @@ public class NodeManager : INodeManager
 {
     private readonly IHttpService _httpService;
     private readonly ICacheStorage _cache;
+
     public NodeManager(IHttpService httpService, INodeRegistry nodeRegistry, ICacheStorage cacheStorage)
     {
         _httpService = httpService;
@@ -165,36 +166,42 @@ public class NodeManager : INodeManager
             return Result<string?>.Fail(ex.Message, 500);
         }
     }
-    public async Task<Result<NodeWithDataResponseDto>> GetNodeWithDataAsync(string key)
+    public async Task<Result<NodeWithDataResponseDto>> GetNodeWithDataAsync(string containerName)
     {
-        var index = _cache.GetNodeKeyForItemKey(key);
 
-        var node = _cache.Nodes[index];
+        var node = _cache.GetNodeForName(containerName);
+        var nodeDataResult = await GetNodeDataAsync(node);
+        if (!nodeDataResult.IsSuccess || nodeDataResult.Data == null)
+            return Result<NodeWithDataResponseDto>.Fail(nodeDataResult.Error, nodeDataResult.StatusCode);
 
-        string baseUrl = node.Url.ToString().EndsWith("/") ? node.Url.ToString() : node.Url.ToString() + "/";
-        var requestUri = new Uri(baseUrl + $"api/cache/{key}");
-        var response = await _httpClient.GetAsync(requestUri);
-
-        var content = await response.Content.ReadAsStringAsync();
-
-        if (!response.IsSuccessStatusCode)
+        var nodeWithData = new NodeWithDataResponseDto
         {
-            return Result<NodeWithDataResponseDto>.Fail("Key not found in selected node group",
-                (int)response.StatusCode);
-        }
-
-        var dto = JsonConvert.DeserializeObject<CacheItemResponseDto>(content);
-
-
-        NodeWithDataResponseDto nodeWithData = new()
-        {
+            Name = node.Name,
             Url = node.Url,
             Id = node.Id,
-            Items = new List<CacheItemResponseDto> { dto }
+            Items = nodeDataResult.Data
         };
+
+        foreach (var replica in node.Replicas)
+        {
+            var replicaDataResult = await GetNodeDataAsync(replica);
+            if (!replicaDataResult.IsSuccess || replicaDataResult.Data == null)
+                return Result<NodeWithDataResponseDto>.Fail(replicaDataResult.Error, replicaDataResult.StatusCode);
+
+            var replicaWithData = new NodeWithDataResponseDto
+            {
+                Name = replica.Name,
+                Url = replica.Url,
+                Id = replica.Id,
+                Items = replicaDataResult.Data
+            };
+
+            nodeWithData.Replicas.Add(replicaWithData);
+        }
 
         return Result<NodeWithDataResponseDto>.Ok(nodeWithData, 200);
     }
+
 
     public async Task<Result<List<NodeStatusDto>>> GetAllNodeStatusesAsync()
     {
@@ -202,53 +209,49 @@ public class NodeManager : INodeManager
 
         foreach (var node in _cache.Nodes.Values)
         {
-            string baseUrl = node.Url.ToString().EndsWith("/") ? node.Url.ToString() : node.Url.ToString() + "/";
-            var healthUri = new Uri(baseUrl + "api/health");
-
             try
             {
-                var response = await _httpClient.GetAsync(healthUri);
-                bool isOnline = response.IsSuccessStatusCode;
+                var response = await  _httpService.SendRequestAsync<object>(node.Url.ToString(), "api/cache/health", HttpMethodEnum.Get);
+                bool isOnline = response.IsSuccess;
 
                 result.Add(new NodeStatusDto
                 {
-                    NodeId = node.Id,
+                    ContainerName = node.Id,
                     Url = node.Url.ToString(),
                     IsOnline = isOnline,
                     StatusCode = (int)response.StatusCode
                 });
             }
-            catch
+            catch(HttpRequestException httpEx)
             {
                 result.Add(new NodeStatusDto
                 {
-                    NodeId = node.Id,
+                    ContainerName = node.Id,
                     Url = node.Url.ToString(),
                     IsOnline = false,
                     StatusCode = 0
                 });
+                Console.WriteLine($"Error connecting to {node.Url}: {httpEx.Message}");
             }
         }
 
         return Result<List<NodeStatusDto>>.Ok(result, 200);
     }
 
-    public async Task<Result<NodeStatusDto>> GetNodeStatusAsync(string key)
+    public async Task<Result<NodeStatusDto>> GetNodeStatusAsync(string name)
     {
-        var index = _cache.GetNodeKeyForItemKey(key);
-        var node = _cache.Nodes[index];
-
+        var node =  _cache.GetNodeForName(name);
+        
         string baseUrl = node.Url.ToString().EndsWith("/") ? node.Url.ToString() : node.Url.ToString() + "/";
-        var healthUri = new Uri(baseUrl + "api/health");
 
         try
         {
-            var response = await _httpClient.GetAsync(healthUri);
-            bool isOnline = response.IsSuccessStatusCode;
+            var response = await  _httpService.SendRequestAsync<object>(node.Url.ToString(), "api/cache/health", HttpMethodEnum.Get);
+            bool isOnline = response.IsSuccess;
 
             return Result<NodeStatusDto>.Ok(new NodeStatusDto
             {
-                NodeId = node.Id,
+                ContainerName = node.Name,
                 Url = node.Url.ToString(),
                 IsOnline = isOnline,
                 StatusCode = (int)response.StatusCode
@@ -258,7 +261,7 @@ public class NodeManager : INodeManager
         {
             return Result<NodeStatusDto>.Ok(new NodeStatusDto
             {
-                NodeId = node.Id,
+                ContainerName = node.Name,
                 Url = node.Url.ToString(),
                 IsOnline = false,
                 StatusCode = 0

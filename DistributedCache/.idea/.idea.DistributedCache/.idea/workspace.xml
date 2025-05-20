@@ -16,6 +16,15 @@
   <component name="ChangeListManager">
     <list default="true" id="d11c1fa1-d759-434f-89e7-985c1f5f6c96" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.DistributedCache/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.DistributedCache/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Client/wwwroot/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/wwwroot/app.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Client/wwwroot/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/wwwroot/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Client/wwwroot/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/wwwroot/styles.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/ClusterManager.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/ClusterManager.csproj" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/Controllers/MonitorController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/Controllers/MonitorController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/DTO/NodeStatusDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/DTO/NodeStatusDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/Program.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/Services/NodeManager.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/Services/NodeManager.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Node/Controllers/CacheController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Node/Controllers/CacheController.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -44,6 +53,8 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    ".NET Launch Settings Profile.ClusterManager: http.executor": "Run",
+    ".NET Launch Settings Profile.ClusterManager: https.executor": "Run",
     "DefaultHtmlFileTemplate": "HTML File",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "git-widget-placeholder": "IldarTask",
@@ -56,7 +67,7 @@
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
-  <component name="RunManager" selected="Docker.ClusterManager/Dockerfile">
+  <component name="RunManager" selected=".NET Launch Settings Profile.ClusterManager: https">
     <configuration name="ClusterManager: IIS Express" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
       <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/ClusterManager/ClusterManager.csproj" />
       <option name="LAUNCH_PROFILE_TFM" value="net8.0" />
@@ -192,7 +203,10 @@
       <workItem from="1747579002019" duration="708000" />
       <workItem from="1747651584262" duration="2722000" />
       <workItem from="1747660228830" duration="23000" />
-      <workItem from="1747737644609" duration="3819000" />
+      <workItem from="1747737644609" duration="4308000" />
+      <workItem from="1747745828796" duration="1963000" />
+      <workItem from="1747747858847" duration="1617000" />
+      <workItem from="1747751324730" duration="8037000" />
     </task>
     <servers />
   </component>

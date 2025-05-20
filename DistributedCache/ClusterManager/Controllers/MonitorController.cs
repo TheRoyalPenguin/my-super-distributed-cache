@@ -17,10 +17,10 @@ public class MonitorController(INodeManager _manager) : ControllerBase
 
         return Ok(result.Data);
     }
-    [HttpGet("node/{key}")]
-    public async Task<IActionResult> GetNodeWithData(string key)
+    [HttpGet("node/{containerName}")]
+    public async Task<IActionResult> GetNodeWithData(string containerName)
     {
-        var result = await _manager.GetNodeWithDataAsync(key);
+        var result = await _manager.GetNodeWithDataAsync(containerName);
 
         if (!result.IsSuccess)
             return StatusCode(result.StatusCode, result.Error);
@@ -38,19 +38,19 @@ public class MonitorController(INodeManager _manager) : ControllerBase
             return StatusCode(result.StatusCode, result.Error);
         }
 
-        return Ok();
+        return Ok(result);
     }
     
-    [HttpGet("node/status/{key}")]
-    public async Task<IActionResult> GetNodesStatus(string key)
+    [HttpGet("node/status/{containerName}")]
+    public async Task<IActionResult> GetNodesStatus(string containerName)
     {
-        var result = await _manager.GetNodeStatusAsync(key);
+        var result = await _manager.GetNodeStatusAsync(containerName);
 
         if (!result.IsSuccess)
         {
             return StatusCode(result.StatusCode, result.Error);
         }
 
-        return Ok();
+        return Ok(result);
     }
 }

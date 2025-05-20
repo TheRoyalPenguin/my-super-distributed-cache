@@ -1,4 +1,4 @@
-const baseUrl = "http://localhost:5000";
+const baseUrl = "https://localhost:7275";
 
 function switchTab(tabName) {
     const isManager = tabName === "manager";

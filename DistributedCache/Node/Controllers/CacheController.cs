@@ -67,13 +67,10 @@ public class CacheController(ICacheStorage _cacheStorage) : ControllerBase
         }
         return NotFound();
     }
-    
+
     [HttpGet("health")]
     public IActionResult Health()
     {
-        if (_cacheStorage?.Cache == null)
-            return StatusCode(500, "Cache not initialized.");
-
-        return Ok("Healthy");
+        return Ok();
     }
 }

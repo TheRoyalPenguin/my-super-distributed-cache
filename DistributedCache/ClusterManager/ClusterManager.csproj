@@ -14,4 +14,10 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="wwwroot\app.js" />
+    <None Include="wwwroot\index.html" />
+    <None Include="wwwroot\styles.css" />
+  </ItemGroup>
+
 </Project>
