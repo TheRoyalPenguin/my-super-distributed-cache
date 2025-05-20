@@ -13,8 +13,8 @@ namespace ClusterManager
             builder.Services.AddHttpClient<IHttpService, HttpService>();
             builder.Services.AddSingleton<ICacheStorage, CacheStorage>();
             builder.Services.AddHostedService<NodeRestoreService>();
-            builder.Services.AddScoped<INodeRegistry, NodeRegistry>();
             builder.Services.AddScoped<INodeManager, NodeManager>();
+            builder.Services.AddScoped<INodeRegistry, NodeRegistry>();
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();

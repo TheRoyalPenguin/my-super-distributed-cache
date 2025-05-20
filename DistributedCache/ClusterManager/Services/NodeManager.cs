@@ -8,12 +8,33 @@ public class NodeManager : INodeManager
 {
     private readonly IHttpService _httpService;
     private readonly ICacheStorage _cache;
-    public NodeManager(IHttpService httpService, INodeRegistry nodeRegistry, ICacheStorage cacheStorage)
+    public NodeManager(IHttpService httpService, ICacheStorage cacheStorage)
     {
         _httpService = httpService;
         _cache = cacheStorage;
     }
+    public async Task<Result<string>> RebalanceAfterDeletingNode(Node node)
+    {
+        var nodeName = node.Name;
+        var nodeDataResult = await GetNodeDataAsync(node);
+        if (!nodeDataResult.IsSuccess)
+            return Result<string>.Fail(nodeDataResult.Error!, nodeDataResult.StatusCode);
 
+        var nextNodeResult = _cache.GetNextNode(node.Name);
+        if (!nextNodeResult.IsSuccess)
+            return Result<string>.Fail(nextNodeResult.Error!, nextNodeResult.StatusCode);
+
+        List<CacheItemRequestDto> nodeData = nodeDataResult.Data.Select(c => new CacheItemRequestDto
+        {
+            Key = c.Key,
+            Value = c.Value,
+            TTL = c.TTL
+        }).ToList();
+
+        await SetNodeDataAsync(nextNodeResult.Data, nodeData);
+
+        return Result<string>.Ok("Успешная перебалансировка.", 200);
+    }
     public async Task<Result<List<NodeWithDataResponseDto>>> GetAllNodesWithDataAsync()
     {
         var nodes = _cache.Nodes;

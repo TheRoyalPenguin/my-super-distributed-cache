@@ -19,7 +19,7 @@ public class CacheStorage : ICacheStorage
         _sortedKeys = _nodes.Keys.ToList();
     }
 
-    public bool RemoveNodeByName(string containerName)
+    public bool RemoveMasterWithReplicas(string containerName)
     {
         var hashNode = HashGenerator.GetMd5HashString(containerName);
         lock (_lock)
@@ -63,13 +63,34 @@ public class CacheStorage : ICacheStorage
             return _sortedKeys[idx];
         }
     }
-    public Node GetNodeForName(string name)
+    public Node GetNodeByName(string name)
     {
         var hashNode = HashGenerator.GetMd5HashString(name);
         lock(_lock)
         {
             var node = _nodes[hashNode]; 
             return node;
+        }
+    }
+    public Result<Node> GetNextNode(string name)
+    {
+        var hashNode = HashGenerator.GetMd5HashString(name);
+
+        var idx = _sortedKeys.BinarySearch(hashNode, StringComparer.Ordinal);
+        if (idx >= 0)
+        {
+            idx++;
+            if (idx >= _sortedKeys.Count)
+                idx = 0;
+        }
+        else
+        {
+            return Result<Node>.Fail("Узла с переданным именем не существует.", 404);
+        }
+        lock (_lock)
+        {
+            var node = _nodes[_sortedKeys[idx]];
+            return Result<Node>.Ok(node, 200);
         }
     }
     private void UpdateSortedKeys(string hashNode, bool isAdd)
