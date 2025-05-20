@@ -22,7 +22,7 @@ public class CacheController(ICacheStorage _cacheStorage) : ControllerBase
         return NotFound();
     }
 
-    [HttpPut]
+    [HttpPut("single")]
     public IActionResult Set([FromBody] CacheItemRequestDto item)
     {
         var cacheItem = new CacheItem(
@@ -34,7 +34,21 @@ public class CacheController(ICacheStorage _cacheStorage) : ControllerBase
         _cacheStorage.Cache.AddOrUpdate(cacheItem.Key, cacheItem, (k, old) => cacheItem);
         return Ok();
     }
+    [HttpPut("multiple")]
+    public IActionResult Set([FromBody] List<CacheItemRequestDto> items)
+    {
+        foreach (var item in items)
+        {
+            var cacheItem = new CacheItem(
+                item.Key,
+                item.Value,
+                item.TTL.HasValue ? item.TTL : null
+            );
 
+            _cacheStorage.Cache.AddOrUpdate(cacheItem.Key, cacheItem, (k, old) => cacheItem);
+        }
+        return Ok();
+    }
     [HttpGet("all")]
     public IActionResult GetAll()
     {
