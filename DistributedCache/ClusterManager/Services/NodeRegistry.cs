@@ -315,8 +315,8 @@ public class NodeRegistry : INodeRegistry
         foreach (var masterNode in masterNodes)
         {
             _cache.AddNode(masterNode.Name, masterNode);
+            _manager.RebalanceAfterCreatingNode(masterNode);
         }
-
         return true;
     }
 }

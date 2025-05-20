@@ -49,6 +49,22 @@ public class CacheController(ICacheStorage _cacheStorage) : ControllerBase
         }
         return Ok();
     }
+    [HttpPost("delete/multiple")]
+    public IActionResult Delete([FromBody] List<CacheItemRequestDto> items)
+    {
+        List<CacheItemRequestDto> deletedItems = new();
+
+        foreach (var item in items)
+        {
+            var itemKey = item.Key;
+
+            var res = _cacheStorage.Cache.TryRemove(itemKey, out var _);
+            deletedItems.Add(item);
+            if (!res)
+                return BadRequest("Ошибка удаления элемента с key=" + itemKey);
+        }
+        return Ok(deletedItems);
+    }
     [HttpGet("all")]
     public IActionResult GetAll()
     {

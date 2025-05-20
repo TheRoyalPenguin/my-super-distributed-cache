@@ -1,5 +1,6 @@
 ﻿using ClusterManager.DTO;
 using ClusterManager.Interfaces;
+using ClusterManager.Utils;
 using Newtonsoft.Json;
 
 namespace ClusterManager.Services;
@@ -31,9 +32,41 @@ public class NodeManager : INodeManager
             TTL = c.TTL
         }).ToList();
 
-        await SetNodeDataAsync(nextNodeResult.Data, nodeData);
+        await AddNodeDataAsync(nextNodeResult.Data, nodeData);
 
         return Result<string>.Ok("Успешная перебалансировка.", 200);
+    }
+    public async Task<Result<string>> RebalanceAfterCreatingNode(Node creatingNode)
+    {
+        var creatingNodeDataResult = await GetNodeDataAsync(creatingNode);
+        if (!creatingNodeDataResult.IsSuccess)
+            return Result<string>.Fail(creatingNodeDataResult.Error!, creatingNodeDataResult.StatusCode);
+        var creatingNodeData = creatingNodeDataResult.Data;
+
+        var nextNodeResult = _cache.GetNextNode(creatingNode.Name);
+        if (!nextNodeResult.IsSuccess)
+            return Result<string>.Fail(nextNodeResult.Error!, nextNodeResult.StatusCode);
+        var nextNode = nextNodeResult.Data;
+
+        var nextNodeDataResult = await GetNodeDataAsync(nextNode);
+        if (!nextNodeDataResult.IsSuccess)
+            return Result<string>.Fail(nextNodeDataResult.Error!, nextNodeDataResult.StatusCode);
+        var nextNodeData = nextNodeDataResult.Data;
+
+        List<CacheItemRequestDto> nodeDataToDelete = new();
+        List<CacheItemRequestDto> nodeData = nextNodeData
+            .Where(c => _cache.GetNodeKeyForItemKey(c.Key) == HashGenerator.GetMd5HashString(creatingNode.Name))
+            .Select(c => new CacheItemRequestDto
+            {
+                Key = c.Key,
+                Value = c.Value,
+                TTL = c.TTL
+            }).ToList();
+
+        await AddNodeDataAsync(creatingNode, nodeData);
+        await DeleteNodeDataAsync(nextNode, nodeData);
+
+        return Result<string>.Ok("Успешная перебалансировка после добавления ноды.", 200);
     }
     public async Task<Result<List<NodeWithDataResponseDto>>> GetAllNodesWithDataAsync()
     {
@@ -98,7 +131,7 @@ public class NodeManager : INodeManager
 
         return Result<List<CacheItemResponseDto>>.Ok(dto, 200);
     }
-    private async Task<Result<string>> SetNodeDataAsync(Node node, CacheItemRequestDto item)
+    private async Task<Result<string>> AddNodeDataAsync(Node node, CacheItemRequestDto item)
     {
         var responseResult = await _httpService.SendRequestAsync<CacheItemRequestDto>(node.Url.ToString(), "api/cache/single", HttpMethodEnum.Put, item);
         if (!responseResult.IsSuccess)
@@ -106,7 +139,7 @@ public class NodeManager : INodeManager
 
         return Result<string>.Ok("Успешно.", 200);
     }
-    private async Task<Result<string>> SetNodeDataAsync(Node node, List<CacheItemRequestDto> items)
+    private async Task<Result<string>> AddNodeDataAsync(Node node, List<CacheItemRequestDto> items)
     {
         var responseResult = await _httpService.SendRequestAsync<List<CacheItemRequestDto>>(node.Url.ToString(), "api/cache/multiple", HttpMethodEnum.Put, items);
         if (!responseResult.IsSuccess)
@@ -114,7 +147,14 @@ public class NodeManager : INodeManager
 
         return Result<string>.Ok("Успешно.", 200);
     }
+    private async Task<Result<string>> DeleteNodeDataAsync(Node node, List<CacheItemRequestDto> itemsToDelete)
+    {
+        var responseResult = await _httpService.SendRequestAsync<List<CacheItemRequestDto>>(node.Url.ToString(), "api/cache/delete/multiple", HttpMethodEnum.Post, itemsToDelete);
+        if (!responseResult.IsSuccess)
+            return Result<string>.Fail(string.IsNullOrEmpty(responseResult.Error) ? "Ошибка добавления данных в узел." : responseResult.Error, responseResult.StatusCode);
 
+        return Result<string>.Ok("Успешно.", 200);
+    }
     public async Task<Result<string?>> SetCacheItemAsync(CacheItemRequestDto item)
     {
         try
@@ -122,7 +162,7 @@ public class NodeManager : INodeManager
             var nodeKey = _cache.GetNodeKeyForItemKey(item.Key);
             var node = _cache.Nodes[nodeKey];
 
-            var nodeSetResult = await SetNodeDataAsync(node, item);
+            var nodeSetResult = await AddNodeDataAsync(node, item);
 
             if (!nodeSetResult.IsSuccess)
             {
@@ -131,7 +171,7 @@ public class NodeManager : INodeManager
             }
             foreach (var replica in node.Replicas)
             {
-                var replicaSetResult = await SetNodeDataAsync(replica, item);
+                var replicaSetResult = await AddNodeDataAsync(replica, item);
 
                 if (!replicaSetResult.IsSuccess)
                 {
