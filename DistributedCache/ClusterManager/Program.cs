@@ -10,6 +10,7 @@ namespace ClusterManager
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Services.AddHttpClient<IHttpService, HttpService>();
             builder.Services.AddSingleton<ICacheStorage, CacheStorage>();
             builder.Services.AddHostedService<NodeRestoreService>();
             builder.Services.AddScoped<INodeRegistry, NodeRegistry>();

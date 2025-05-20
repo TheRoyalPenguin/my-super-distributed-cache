@@ -11,7 +11,7 @@ public class NodeRegistry : INodeRegistry
     // Для Linux изменить на - "unix:///var/run/docker.sock"
     private readonly Uri _dockerUri = new Uri("npipe://./pipe/docker_engine"); // Windows
     private const string baseUrl = "http://localhost:";
-    public NodeRegistry(HttpClient httpClient, ICacheStorage cacheStorage)
+    public NodeRegistry(ICacheStorage cacheStorage)
     {
         _cache = cacheStorage;
     }

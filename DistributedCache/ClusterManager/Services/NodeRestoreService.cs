@@ -10,7 +10,7 @@ public class NodeRestoreService : BackgroundService
     private readonly ICacheStorage _cache;
     private const string baseUrl = "http://localhost:";
     private readonly Uri _dockerUri = new Uri("npipe://./pipe/docker_engine");
-    public NodeRestoreService(HttpClient httpClient, ICacheStorage cacheStorage)
+    public NodeRestoreService(ICacheStorage cacheStorage)
     {
         _cache = cacheStorage;
     }
