@@ -1,4 +1,6 @@
-﻿using ClusterManager.DTO;
+﻿using ClusterManager.Common;
+using ClusterManager.DTO;
+using ClusterManager.Models;
 
 namespace ClusterManager.Interfaces;
 

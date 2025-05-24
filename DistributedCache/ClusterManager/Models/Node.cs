@@ -1,4 +1,4 @@
-﻿namespace ClusterManager.DTO;
+﻿namespace ClusterManager.Models;
 
 public class Node
 {

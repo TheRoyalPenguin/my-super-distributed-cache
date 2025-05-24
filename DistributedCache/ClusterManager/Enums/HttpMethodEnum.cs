@@ -1,4 +1,4 @@
-﻿namespace ClusterManager;
+﻿namespace ClusterManager.Enums;
 
 public enum HttpMethodEnum
 {

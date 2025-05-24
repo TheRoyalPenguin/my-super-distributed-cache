@@ -1,4 +1,4 @@
-﻿namespace ClusterManager;
+﻿namespace ClusterManager.Common;
 
 public class Result<T>
 {

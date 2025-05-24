@@ -1,7 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 
-namespace ClusterManager.Utils;
+namespace ClusterManager.Common.Utils;
 
 public static class HashGenerator
 {

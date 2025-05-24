@@ -1,5 +1,6 @@
 ﻿using ClusterManager.DTO;
 using ClusterManager.Interfaces;
+using ClusterManager.Models;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 

@@ -1,7 +1,8 @@
 ﻿using System.Collections.ObjectModel;
-using ClusterManager.DTO;
+using ClusterManager.Common;
+using ClusterManager.Common.Utils;
 using ClusterManager.Interfaces;
-using ClusterManager.Utils;
+using ClusterManager.Models;
 
 namespace ClusterManager.Services;
 
