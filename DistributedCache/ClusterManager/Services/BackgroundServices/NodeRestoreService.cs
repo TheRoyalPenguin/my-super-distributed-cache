@@ -5,7 +5,7 @@ using ClusterManager.Models;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 
-namespace ClusterManager.Services;
+namespace ClusterManager.Services.BackgroundServices;
 
 public class NodeRestoreService : BackgroundService
 {

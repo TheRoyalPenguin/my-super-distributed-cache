@@ -1,6 +1,7 @@
-
+using Newtonsoft.Json.Converters;
 using ClusterManager.Interfaces;
 using ClusterManager.Services;
+using ClusterManager.Services.BackgroundServices;
 
 namespace ClusterManager
 {
@@ -13,9 +14,15 @@ namespace ClusterManager
             builder.Services.AddHttpClient<IHttpService, HttpService>();
             builder.Services.AddSingleton<ICacheStorage, CacheStorage>();
             builder.Services.AddHostedService<NodeRestoreService>();
+            builder.Services.AddHostedService<NodeStatusChecker>();
             builder.Services.AddScoped<INodeManager, NodeManager>();
             builder.Services.AddScoped<INodeRegistry, NodeRegistry>();
-            builder.Services.AddControllers();
+            builder.Services
+                .AddControllers()
+                .AddNewtonsoftJson(options =>
+                {
+                    options.SerializerSettings.Converters.Add(new StringEnumConverter());
+                });
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 

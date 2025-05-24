@@ -5,5 +5,6 @@ public enum NodeStatusEnum
     Online,
     Offline,
     Initializing,
-    Error
+    Error,
+    ContainerNotFound
 }

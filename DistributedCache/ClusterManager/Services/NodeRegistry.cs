@@ -153,6 +153,7 @@ public class NodeRegistry : INodeRegistry
                     },
                     Labels = new Dictionary<string, string>
                     {
+                        { "app", "distributedCache" },
                         { "masterName", "" },
                         { "isReplica", "" }
                     }
