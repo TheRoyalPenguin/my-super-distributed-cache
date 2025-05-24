@@ -1,16 +1,18 @@
 ﻿using ClusterManager.DTO;
+using ClusterManager.Enums;
 using ClusterManager.Interfaces;
+using ClusterManager.Models;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 
-namespace ClusterManager.Services;
+namespace ClusterManager.Services.BackgroundServices;
 
 public class NodeRestoreService : BackgroundService
 {
     private readonly ICacheStorage _cache;
     private const string baseUrl = "http://localhost:";
     private readonly Uri _dockerUri = new Uri("npipe://./pipe/docker_engine");
-    public NodeRestoreService(HttpClient httpClient, ICacheStorage cacheStorage)
+    public NodeRestoreService(ICacheStorage cacheStorage)
     {
         _cache = cacheStorage;
     }
@@ -76,6 +78,7 @@ public class NodeRestoreService : BackgroundService
         Node masterNode = new()
         {
             Name = masterNodeDto.Name,
+            Status = NodeStatusEnum.Initializing,
             Id = masterNodeDto.Id,
             Url = new Uri(masterNodeDto.Url.EndsWith("/") ? masterNodeDto.Url : masterNodeDto.Url + "/")
         };
@@ -85,6 +88,7 @@ public class NodeRestoreService : BackgroundService
             Node replica = new()
             {
                 Name = replicas[i].Name,
+                Status = NodeStatusEnum.Initializing,
                 Id = replicas[i].Id,
                 Url = new Uri(replicas[i].Url.EndsWith("/") ? replicas[i].Url : replicas[i].Url + "/")
             };

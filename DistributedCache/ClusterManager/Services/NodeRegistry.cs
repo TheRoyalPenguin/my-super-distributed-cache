@@ -2,22 +2,62 @@
 using Docker.DotNet.Models;
 using Docker.DotNet;
 using ClusterManager.Interfaces;
+using ClusterManager.Models;
+using ClusterManager.Common;
+using ClusterManager.Enums;
 
 namespace ClusterManager.Services;
 
 public class NodeRegistry : INodeRegistry
 {
     private readonly ICacheStorage _cache;
+    private readonly INodeManager _manager;
     // Для Linux изменить на - "unix:///var/run/docker.sock"
     private readonly Uri _dockerUri = new Uri("npipe://./pipe/docker_engine"); // Windows
     private const string baseUrl = "http://localhost:";
-    public NodeRegistry(HttpClient httpClient, ICacheStorage cacheStorage)
+    public NodeRegistry(ICacheStorage cacheStorage, INodeManager manager)
     {
         _cache = cacheStorage;
+        _manager = manager;
+    }
+    public async Task<Result<List<string>>> DeleteNodeByNameAsync(string name)
+    {
+        var node = _cache.GetNodeByName(name);
+
+        await _manager.RebalanceAfterDeletingNode(node);
+
+        List<(string name, string id)> containers = new();
+        containers.Add((node.Name, node.Id));
+        foreach (var rep in node.Replicas)
+        {
+            containers.Add((rep.Name, rep.Id));
+        }
+        List<string> failedToRemoveNames = new();
+
+        using (var dockerClient = new DockerClientConfiguration(_dockerUri).CreateClient())
+        {
+            dockerClient.DefaultTimeout = TimeSpan.FromMinutes(5);
+
+            var myLock = new Object();
+            var tasks = new List<Task>();
+
+            foreach (var container in containers)
+            {
+                tasks.Add(RemoveContainerAsync(dockerClient, container.name, container.id, failedToRemoveNames, myLock));
+                _cache.RemoveMasterWithReplicas(container.name);
+            }
+
+            await Task.WhenAll(tasks);
+        }
+
+        if (failedToRemoveNames.Count > 0)
+            return Result<List<string>>.Fail("Ошибка удаления узлов. Название узлов, которые не удалились: " + string.Join(", ", failedToRemoveNames), 500);
+
+        return Result<List<string>>.Ok(failedToRemoveNames, 200);
     }
     public async Task<Result<List<string>>> ForceDeleteNodeByNameAsync(string name)
     {
-        var node = _cache.GetNodeForName(name);
+        var node = _cache.GetNodeByName(name);
         List<(string name, string id)> containers = new();
         containers.Add((node.Name, node.Id));
         foreach(var rep in node.Replicas)
@@ -36,6 +76,7 @@ public class NodeRegistry : INodeRegistry
             foreach (var container in containers)
             {
                 tasks.Add(RemoveContainerAsync(dockerClient, container.name, container.id, failedToRemoveNames, myLock));
+                _cache.RemoveMasterWithReplicas(container.name);
             }
 
             await Task.WhenAll(tasks);
@@ -57,8 +98,6 @@ public class NodeRegistry : INodeRegistry
                     Force = true,
                     RemoveVolumes = true
                 });
-
-            _cache.RemoveNodeByName(containerName);
         }
         catch (DockerContainerNotFoundException)
         {
@@ -114,6 +153,7 @@ public class NodeRegistry : INodeRegistry
                     },
                     Labels = new Dictionary<string, string>
                     {
+                        { "app", "distributedCache" },
                         { "masterName", "" },
                         { "isReplica", "" }
                     }
@@ -233,19 +273,6 @@ public class NodeRegistry : INodeRegistry
     {
         return "node-container-" + name + "-" + Guid.NewGuid();
     }
-    private bool RegisterNode(string id, string url, string name)
-    {
-        Node node = new()
-        {
-            Name = name,
-            Id = id,
-            Url = new Uri(url.EndsWith("/") ? url : url + "/")
-        };
-
-        _cache.AddNode(name, node);
-
-        return true;
-    }
     private bool RegisterNode(List<NodeDto> masterNodeDtoList, List<NodeDto> replicas)
     {
         List<Node> masterNodes = new();
@@ -254,6 +281,7 @@ public class NodeRegistry : INodeRegistry
             Node node = new()
             {
                 Name = m.Name,
+                Status = NodeStatusEnum.Initializing,
                 Id = m.Id,
                 Url = new Uri(m.Url.EndsWith("/") ? m.Url : m.Url + "/")
             };
@@ -266,6 +294,7 @@ public class NodeRegistry : INodeRegistry
             Node replica = new()
             {
                 Name = replicas[i].Name,
+                Status = NodeStatusEnum.Initializing,
                 Id = replicas[i].Id,
                 Url = new Uri(replicas[i].Url.EndsWith("/") ? replicas[i].Url : replicas[i].Url + "/")
             };
@@ -279,8 +308,8 @@ public class NodeRegistry : INodeRegistry
         foreach (var masterNode in masterNodes)
         {
             _cache.AddNode(masterNode.Name, masterNode);
+            _manager.RebalanceAfterCreatingNode(masterNode);
         }
-
         return true;
     }
 }
