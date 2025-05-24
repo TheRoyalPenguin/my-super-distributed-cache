@@ -4,6 +4,7 @@ using Docker.DotNet;
 using ClusterManager.Interfaces;
 using ClusterManager.Models;
 using ClusterManager.Common;
+using ClusterManager.Enums;
 
 namespace ClusterManager.Services;
 
@@ -271,19 +272,6 @@ public class NodeRegistry : INodeRegistry
     {
         return "node-container-" + name + "-" + Guid.NewGuid();
     }
-    private bool RegisterNode(string id, string url, string name)
-    {
-        Node node = new()
-        {
-            Name = name,
-            Id = id,
-            Url = new Uri(url.EndsWith("/") ? url : url + "/")
-        };
-
-        _cache.AddNode(name, node);
-
-        return true;
-    }
     private bool RegisterNode(List<NodeDto> masterNodeDtoList, List<NodeDto> replicas)
     {
         List<Node> masterNodes = new();
@@ -292,6 +280,7 @@ public class NodeRegistry : INodeRegistry
             Node node = new()
             {
                 Name = m.Name,
+                Status = NodeStatusEnum.Initializing,
                 Id = m.Id,
                 Url = new Uri(m.Url.EndsWith("/") ? m.Url : m.Url + "/")
             };
@@ -304,6 +293,7 @@ public class NodeRegistry : INodeRegistry
             Node replica = new()
             {
                 Name = replicas[i].Name,
+                Status = NodeStatusEnum.Initializing,
                 Id = replicas[i].Id,
                 Url = new Uri(replicas[i].Url.EndsWith("/") ? replicas[i].Url : replicas[i].Url + "/")
             };

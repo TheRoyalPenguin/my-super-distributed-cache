@@ -1,4 +1,5 @@
 ﻿using ClusterManager.DTO;
+using ClusterManager.Enums;
 using ClusterManager.Interfaces;
 using ClusterManager.Models;
 using Docker.DotNet;
@@ -77,6 +78,7 @@ public class NodeRestoreService : BackgroundService
         Node masterNode = new()
         {
             Name = masterNodeDto.Name,
+            Status = NodeStatusEnum.Initializing,
             Id = masterNodeDto.Id,
             Url = new Uri(masterNodeDto.Url.EndsWith("/") ? masterNodeDto.Url : masterNodeDto.Url + "/")
         };
@@ -86,6 +88,7 @@ public class NodeRestoreService : BackgroundService
             Node replica = new()
             {
                 Name = replicas[i].Name,
+                Status = NodeStatusEnum.Initializing,
                 Id = replicas[i].Id,
                 Url = new Uri(replicas[i].Url.EndsWith("/") ? replicas[i].Url : replicas[i].Url + "/")
             };

@@ -88,6 +88,7 @@ public class NodeManager : INodeManager
             NodeWithDataResponseDto nodeWithData = new()
             {
                 Name = node.Name,
+                Status = node.Status,
                 Url = node.Url,
                 Id = node.Id,
                 Items = NodeDataResult.Data
@@ -104,6 +105,7 @@ public class NodeManager : INodeManager
                 NodeWithDataResponseDto replicaWithData = new()
                 {
                     Name = replica.Name,
+                    Status = node.Status,
                     Url = replica.Url,
                     Id = replica.Id,
                     Items = ReplicaDataResult.Data
