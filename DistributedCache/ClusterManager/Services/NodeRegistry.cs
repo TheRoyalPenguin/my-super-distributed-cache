@@ -172,7 +172,13 @@ public class NodeRegistry : INodeRegistry
                     foreach (var binding in config.PortBindings)
                     {
                         createParams.ExposedPorts[binding.Key] = default;
-                        createParams.HostConfig.PublishAllPorts = true; // публикуем внешний порт
+                        createParams.HostConfig.PortBindings[binding.Key] = new List<PortBinding>
+                        {
+                            new PortBinding
+                            {
+                                HostPort = binding.Value
+                            }
+                        };
                     }
                 }
 
@@ -263,7 +269,7 @@ public class NodeRegistry : INodeRegistry
             },
             PortBindings = new Dictionary<string, string>
             {
-                { "8080/tcp", "" }
+                { "8080/tcp", "0" }
             }
         };
 
