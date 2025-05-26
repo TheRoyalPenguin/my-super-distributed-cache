@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Node.DTO;
+using Node.Interfaces;
 using Node.Models;
-using Node.Services;
 
 namespace Node.Controllers;
 
@@ -15,7 +15,10 @@ public class CacheController(ICacheStorage _cacheStorage) : ControllerBase
         if (_cacheStorage.Cache.TryGetValue(key, out var item))
         {
             if (item.IsExpired())
+            {
+                _cacheStorage.Cache.TryRemove(key, out var _);
                 return NotFound("TTL has expired.");
+            }
             item.UpdateAccessTime();
             return Ok(item.Value);
         }
@@ -48,6 +51,22 @@ public class CacheController(ICacheStorage _cacheStorage) : ControllerBase
             _cacheStorage.Cache.AddOrUpdate(cacheItem.Key, cacheItem, (k, old) => cacheItem);
         }
         return Ok();
+    }
+    [HttpPost("delete/multiple")]
+    public IActionResult Delete([FromBody] List<CacheItemRequestDto> items)
+    {
+        List<CacheItemRequestDto> deletedItems = new();
+
+        foreach (var item in items)
+        {
+            var itemKey = item.Key;
+
+            var res = _cacheStorage.Cache.TryRemove(itemKey, out var _);
+            deletedItems.Add(item);
+            if (!res)
+                return BadRequest("Ошибка удаления элемента с key=" + itemKey);
+        }
+        return Ok(deletedItems);
     }
     [HttpGet("all")]
     public IActionResult GetAll()

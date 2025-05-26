@@ -46,7 +46,7 @@ public class ClusterController(INodeManager _manager, INodeRegistry _nodeRegistr
     [HttpDelete("nodes/delete/{containerName}")]
     public async Task<IActionResult> DeleteNode([FromRoute] string containerName, [FromQuery] bool force)
     {
-        var result = await _nodeRegistry.ForceDeleteNodeByNameAsync(containerName);
+        var result = force == true ? await _nodeRegistry.ForceDeleteNodeByNameAsync(containerName) : await _nodeRegistry.DeleteNodeByNameAsync(containerName);
 
         if (!result.IsSuccess)
             return StatusCode(result.StatusCode, result.Error);

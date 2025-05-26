@@ -1,5 +1,9 @@
-﻿using ClusterManager.DTO;
+﻿using ClusterManager.Common;
+using ClusterManager.Common.Utils;
+using ClusterManager.DTO;
+using ClusterManager.Enums;
 using ClusterManager.Interfaces;
+using ClusterManager.Models;
 using Newtonsoft.Json;
 
 namespace ClusterManager.Services;
@@ -8,13 +12,65 @@ public class NodeManager : INodeManager
 {
     private readonly IHttpService _httpService;
     private readonly ICacheStorage _cache;
-
-    public NodeManager(IHttpService httpService, INodeRegistry nodeRegistry, ICacheStorage cacheStorage)
+    public NodeManager(IHttpService httpService, ICacheStorage cacheStorage)
     {
         _httpService = httpService;
         _cache = cacheStorage;
     }
+    public async Task<Result<string>> RebalanceAfterDeletingNode(Node node)
+    {
+        var nodeName = node.Name;
+        var nodeDataResult = await GetNodeDataAsync(node);
+        if (!nodeDataResult.IsSuccess)
+            return Result<string>.Fail(nodeDataResult.Error!, nodeDataResult.StatusCode);
 
+        var nextNodeResult = _cache.GetNextNode(node.Name);
+        if (!nextNodeResult.IsSuccess)
+            return Result<string>.Fail(nextNodeResult.Error!, nextNodeResult.StatusCode);
+
+        List<CacheItemRequestDto> nodeData = nodeDataResult.Data.Select(c => new CacheItemRequestDto
+        {
+            Key = c.Key,
+            Value = c.Value,
+            TTL = c.TTL
+        }).ToList();
+
+        await AddNodeAndReplicasDataAsync(nextNodeResult.Data, nodeData);
+
+        return Result<string>.Ok("Успешная перебалансировка.", 200);
+    }
+    public async Task<Result<string>> RebalanceAfterCreatingNode(Node creatingNode)
+    {
+        var creatingNodeDataResult = await GetNodeDataAsync(creatingNode);
+        if (!creatingNodeDataResult.IsSuccess)
+            return Result<string>.Fail(creatingNodeDataResult.Error!, creatingNodeDataResult.StatusCode);
+        var creatingNodeData = creatingNodeDataResult.Data;
+
+        var nextNodeResult = _cache.GetNextNode(creatingNode.Name);
+        if (!nextNodeResult.IsSuccess)
+            return Result<string>.Fail(nextNodeResult.Error!, nextNodeResult.StatusCode);
+        var nextNode = nextNodeResult.Data;
+
+        var nextNodeDataResult = await GetNodeDataAsync(nextNode);
+        if (!nextNodeDataResult.IsSuccess)
+            return Result<string>.Fail(nextNodeDataResult.Error!, nextNodeDataResult.StatusCode);
+        var nextNodeData = nextNodeDataResult.Data;
+
+        List<CacheItemRequestDto> nodeDataToDelete = new();
+        List<CacheItemRequestDto> nodeData = nextNodeData
+            .Where(c => _cache.GetNodeKeyForItemKey(c.Key) == HashGenerator.GetMd5HashString(creatingNode.Name))
+            .Select(c => new CacheItemRequestDto
+            {
+                Key = c.Key,
+                Value = c.Value,
+                TTL = c.TTL
+            }).ToList();
+
+        await AddNodeAndReplicasDataAsync(creatingNode, nodeData);
+        await DeleteNodeAndReplicasDataAsync(nextNode, nodeData);
+
+        return Result<string>.Ok("Успешная перебалансировка после добавления ноды.", 200);
+    }
     public async Task<Result<List<NodeWithDataResponseDto>>> GetAllNodesWithDataAsync()
     {
         var nodes = _cache.Nodes;
@@ -32,6 +88,7 @@ public class NodeManager : INodeManager
             NodeWithDataResponseDto nodeWithData = new()
             {
                 Name = node.Name,
+                Status = node.Status,
                 Url = node.Url,
                 Id = node.Id,
                 Items = NodeDataResult.Data
@@ -48,6 +105,7 @@ public class NodeManager : INodeManager
                 NodeWithDataResponseDto replicaWithData = new()
                 {
                     Name = replica.Name,
+                    Status = node.Status,
                     Url = replica.Url,
                     Id = replica.Id,
                     Items = ReplicaDataResult.Data
@@ -78,23 +136,52 @@ public class NodeManager : INodeManager
 
         return Result<List<CacheItemResponseDto>>.Ok(dto, 200);
     }
-    private async Task<Result<string>> SetNodeDataAsync(Node node, CacheItemRequestDto item)
+    private async Task<Result<string>> AddNodeAndReplicasDataAsync(Node node, CacheItemRequestDto item)
     {
         var responseResult = await _httpService.SendRequestAsync<CacheItemRequestDto>(node.Url.ToString(), "api/cache/single", HttpMethodEnum.Put, item);
         if (!responseResult.IsSuccess)
             return Result<string>.Fail(string.IsNullOrEmpty(responseResult.Error) ? "Ошибка добавления данных в узел." : responseResult.Error, responseResult.StatusCode);
 
+        foreach (var replica in node.Replicas)
+        {
+            var responseReplicaResult = await _httpService.SendRequestAsync<CacheItemRequestDto>(replica.Url.ToString(), "api/cache/single", HttpMethodEnum.Put, item);
+            if (!responseReplicaResult.IsSuccess)
+                return Result<string>.Fail(string.IsNullOrEmpty(responseReplicaResult.Error) ? "Ошибка добавления данных в узел." : responseReplicaResult.Error, responseReplicaResult.StatusCode);
+        }
+
+
         return Result<string>.Ok("Успешно.", 200);
     }
-    private async Task<Result<string>> SetNodeDataAsync(Node node, List<CacheItemRequestDto> items)
+    private async Task<Result<string>> AddNodeAndReplicasDataAsync(Node node, List<CacheItemRequestDto> items)
     {
         var responseResult = await _httpService.SendRequestAsync<List<CacheItemRequestDto>>(node.Url.ToString(), "api/cache/multiple", HttpMethodEnum.Put, items);
         if (!responseResult.IsSuccess)
             return Result<string>.Fail(string.IsNullOrEmpty(responseResult.Error) ? "Ошибка добавления данных в узел." : responseResult.Error, responseResult.StatusCode);
 
+        foreach (var replica in node.Replicas)
+        {
+            var responseReplicaResult = await _httpService.SendRequestAsync<List<CacheItemRequestDto>>(replica.Url.ToString(), "api/cache/multiple", HttpMethodEnum.Put, items);
+            if (!responseReplicaResult.IsSuccess)
+                return Result<string>.Fail(string.IsNullOrEmpty(responseReplicaResult.Error) ? "Ошибка добавления данных в узел." : responseReplicaResult.Error, responseReplicaResult.StatusCode);
+        }
+
         return Result<string>.Ok("Успешно.", 200);
     }
+    private async Task<Result<string>> DeleteNodeAndReplicasDataAsync(Node node, List<CacheItemRequestDto> itemsToDelete)
+    {
+        var responseResult = await _httpService.SendRequestAsync<List<CacheItemRequestDto>>(node.Url.ToString(), "api/cache/delete/multiple", HttpMethodEnum.Post, itemsToDelete);
+        if (!responseResult.IsSuccess)
+            return Result<string>.Fail(string.IsNullOrEmpty(responseResult.Error) ? "Ошибка добавления данных в узел." : responseResult.Error, responseResult.StatusCode);
 
+        foreach (var replica in node.Replicas)
+        {
+            var responseReplicaResult = await _httpService.SendRequestAsync<List<CacheItemRequestDto>>(replica.Url.ToString(), "api/cache/delete/multiple", HttpMethodEnum.Post, itemsToDelete);
+            if (!responseReplicaResult.IsSuccess)
+                return Result<string>.Fail(string.IsNullOrEmpty(responseReplicaResult.Error) ? "Ошибка добавления данных в узел." : responseReplicaResult.Error, responseReplicaResult.StatusCode);
+        }
+
+        return Result<string>.Ok("Успешно.", 200);
+    }
     public async Task<Result<string?>> SetCacheItemAsync(CacheItemRequestDto item)
     {
         try
@@ -102,7 +189,7 @@ public class NodeManager : INodeManager
             var nodeKey = _cache.GetNodeKeyForItemKey(item.Key);
             var node = _cache.Nodes[nodeKey];
 
-            var nodeSetResult = await SetNodeDataAsync(node, item);
+            var nodeSetResult = await AddNodeAndReplicasDataAsync(node, item);
 
             if (!nodeSetResult.IsSuccess)
             {
@@ -111,7 +198,7 @@ public class NodeManager : INodeManager
             }
             foreach (var replica in node.Replicas)
             {
-                var replicaSetResult = await SetNodeDataAsync(replica, item);
+                var replicaSetResult = await AddNodeAndReplicasDataAsync(replica, item);
 
                 if (!replicaSetResult.IsSuccess)
                 {

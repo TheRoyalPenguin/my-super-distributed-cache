@@ -1,4 +1,7 @@
-﻿namespace ClusterManager.Interfaces;
+﻿using ClusterManager.Common;
+using ClusterManager.Enums;
+
+namespace ClusterManager.Interfaces;
 
 public interface IHttpService
 {
