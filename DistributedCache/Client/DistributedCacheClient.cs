@@ -56,7 +56,7 @@ public class DistributedCacheClient
         }
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan? ttl = null)
+    public async Task SetCacheAsync<T>(string key, T value, TimeSpan? ttl = null)
     {
         var dto = new CacheItemDto
         {
@@ -66,8 +66,8 @@ public class DistributedCacheClient
         };
 
         var response = await TryWithFailover(url =>
-            _httpClient.PutAsJsonAsync(url + "api/cluster/cache/" + Uri.EscapeDataString(key), dto));
-
+            _httpClient.PutAsJsonAsync(url + "api/cluster/cache/", dto));
+        
         if (!response.IsSuccessStatusCode)
         {
             throw new Exception($"Cache SET failed with status code {response.StatusCode}");
@@ -76,7 +76,7 @@ public class DistributedCacheClient
 
     public async Task SetAsync<T>(string key, T value, int? ttlSeconds = null)
     {
-        await SetAsync(key, value, ttlSeconds.HasValue ? TimeSpan.FromSeconds(ttlSeconds.Value) : null);
+        await SetCacheAsync(key, value, ttlSeconds.HasValue ? TimeSpan.FromSeconds(ttlSeconds.Value) : null);
     }
     public async Task<string> CreateNodeAsync(string containerName, int copiesCount = 1)
     {

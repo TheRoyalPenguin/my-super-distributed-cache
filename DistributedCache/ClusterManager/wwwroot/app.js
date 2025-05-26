@@ -36,7 +36,7 @@ async function setCache() {
     };
 
     try {
-        const res = await fetch(`${baseUrl}/api/cluster/cache/${encodeURIComponent(key)}`, {
+        const res = await fetch(`${baseUrl}/api/cluster/cache`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
