@@ -10,8 +10,8 @@ namespace ClusterManager.Services.BackgroundServices;
 public class NodeRestoreService : BackgroundService
 {
     private readonly ICacheStorage _cache;
-    private const string baseUrl = "http://localhost:";
-    private readonly Uri _dockerUri = new Uri("npipe://./pipe/docker_engine");
+    //private const string baseUrl = "http://localhost:";
+    private readonly Uri _dockerUri = new Uri("unix:///var/run/docker.sock");
     public NodeRestoreService(ICacheStorage cacheStorage)
     {
         _cache = cacheStorage;
@@ -25,7 +25,14 @@ public class NodeRestoreService : BackgroundService
             var containers = await dockerClient.Containers.ListContainersAsync(
                 new ContainersListParameters
                 {
-                    All = true
+                    All = true,
+                    Filters = new Dictionary<string, IDictionary<string, bool>>
+                    {
+                        ["label"] = new Dictionary<string, bool>
+                        {
+                            ["app=distributedCache"] = true
+                        }
+                    }
                 });
 
             Dictionary<string, List<NodeDto>> nodes = new();
@@ -38,7 +45,8 @@ public class NodeRestoreService : BackgroundService
                     NodeDto node = new()
                     {
                         Name = name,
-                        Url = baseUrl + container.Ports.FirstOrDefault()?.PublicPort,
+                        //Url = baseUrl + container.Ports.FirstOrDefault()?.PublicPort,
+                        Url = "http://" + name + ":" + 8080,
                         Id = container.ID
                     };
 
@@ -53,7 +61,8 @@ public class NodeRestoreService : BackgroundService
                     NodeDto node = new()
                     {
                         Name = container.Names[0].TrimStart('/'),
-                        Url = baseUrl + container.Ports.FirstOrDefault()?.PublicPort,
+                        //Url = baseUrl + container.Ports.FirstOrDefault()?.PublicPort,
+                        Url = "http://" + container.Names[0].TrimStart('/') + ":" + 8080,
                         Id = container.ID
                     };
 
