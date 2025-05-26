@@ -11,10 +11,10 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["ClusterManager/ClusterManager.csproj", "ClusterManager/"]
-RUN dotnet restore "./ClusterManager/ClusterManager.csproj"
+COPY ["ClusterManager.csproj", "./"]
+RUN dotnet restore "./ClusterManager.csproj"
 COPY . .
-WORKDIR "/src/ClusterManager"
+WORKDIR "/src"
 RUN dotnet build "./ClusterManager.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # Этот этап используется для публикации проекта службы, который будет скопирован на последний этап
