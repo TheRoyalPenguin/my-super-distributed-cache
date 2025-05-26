@@ -17,7 +17,7 @@ public class CacheController(ICacheStorage _cacheStorage) : ControllerBase
             if (item.IsExpired())
             {
                 _cacheStorage.Cache.TryRemove(key, out var _);
-                return NotFound("TTL has expired.");
+                return StatusCode(410, "TTL has expired.");
             }
             item.UpdateAccessTime();
             return Ok(item.Value);
@@ -56,16 +56,22 @@ public class CacheController(ICacheStorage _cacheStorage) : ControllerBase
     public IActionResult Delete([FromBody] List<CacheItemRequestDto> items)
     {
         List<CacheItemRequestDto> deletedItems = new();
+        List<string> notDeleted = new();
 
         foreach (var item in items)
         {
             var itemKey = item.Key;
 
             var res = _cacheStorage.Cache.TryRemove(itemKey, out var _);
-            deletedItems.Add(item);
-            if (!res)
-                return BadRequest("Ошибка удаления элемента с key=" + itemKey);
+            if (res)
+                deletedItems.Add(item);
+            else
+            {
+                notDeleted.Add(itemKey);
+            }
         }
+        if (notDeleted.Count > 0)
+            return BadRequest("Ошибка удаления элементов с ключами: " + string.Join(", ", notDeleted));
         return Ok(deletedItems);
     }
     [HttpGet("all")]
