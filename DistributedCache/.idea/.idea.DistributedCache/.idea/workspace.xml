@@ -16,15 +16,11 @@
   <component name="ChangeListManager">
     <list default="true" id="d11c1fa1-d759-434f-89e7-985c1f5f6c96" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.DistributedCache/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.DistributedCache/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Client/wwwroot/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/wwwroot/app.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Client/wwwroot/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/wwwroot/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Client/wwwroot/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/wwwroot/styles.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ClusterManager/ClusterManager.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/ClusterManager.csproj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ClusterManager/Controllers/MonitorController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/Controllers/MonitorController.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ClusterManager/DTO/NodeStatusDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/DTO/NodeStatusDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ClusterManager/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/Program.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/Interfaces/INodeManager.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/Interfaces/INodeManager.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ClusterManager/Services/NodeManager.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/Services/NodeManager.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Node/Controllers/CacheController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Node/Controllers/CacheController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/wwwroot/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/wwwroot/app.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/wwwroot/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/wwwroot/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ClusterManager/wwwroot/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/ClusterManager/wwwroot/styles.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -51,22 +47,22 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    ".NET Launch Settings Profile.ClusterManager: http.executor": "Run",
-    ".NET Launch Settings Profile.ClusterManager: https.executor": "Run",
-    "DefaultHtmlFileTemplate": "HTML File",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "IldarTask",
-    "list.type.of.created.stylesheet": "CSS",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;.NET Launch Settings Profile.ClusterManager: http.executor&quot;: &quot;Run&quot;,
+    &quot;.NET Launch Settings Profile.ClusterManager: https.executor&quot;: &quot;Run&quot;,
+    &quot;DefaultHtmlFileTemplate&quot;: &quot;HTML File&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;IldarTask&quot;,
+    &quot;list.type.of.created.stylesheet&quot;: &quot;CSS&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected=".NET Launch Settings Profile.ClusterManager: https">
     <configuration name="ClusterManager: IIS Express" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
       <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/ClusterManager/ClusterManager.csproj" />
@@ -207,6 +203,10 @@
       <workItem from="1747745828796" duration="1963000" />
       <workItem from="1747747858847" duration="1617000" />
       <workItem from="1747751324730" duration="8037000" />
+      <workItem from="1747778609936" duration="5380000" />
+      <workItem from="1747820510340" duration="1057000" />
+      <workItem from="1748265733176" duration="243000" />
+      <workItem from="1748265996254" duration="2625000" />
     </task>
     <servers />
   </component>

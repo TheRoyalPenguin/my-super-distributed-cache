@@ -83,15 +83,82 @@ async function deleteNode() {
 }
 
 // --- Monitor actions ---
+let nodeElements = [];
+let currentIndex = 0;
+
 async function getAllNodesData() {
     try {
         const res = await fetch(`${baseUrl}/api/monitor/nodes`);
         if (!res.ok) throw new Error(`Ошибка ${res.status}`);
-        document.getElementById('allNodesDataResult').textContent = JSON.stringify(await res.json(), null, 2);
+        const data = await res.json();
+
+        const container = document.getElementById("allNodesDataResult");
+        container.innerHTML = "";
+        nodeElements = [];
+        currentIndex = 0;
+
+        Object.entries(data).forEach(([nodeName, nodeData]) => {
+            const card = document.createElement("div");
+            card.className = "node-full-card";
+
+            const nameEl = document.createElement("div");
+            nameEl.textContent = nodeName;
+            nameEl.style.fontWeight = "bold";
+            nameEl.style.marginBottom = "10px";
+            nameEl.style.color = "black";
+
+            const dataEl = document.createElement("pre");
+            dataEl.textContent = JSON.stringify(nodeData, null, 2);
+            dataEl.style.color = "black";
+
+            card.appendChild(nameEl);
+            card.appendChild(dataEl);
+
+            container.appendChild(card);
+            nodeElements.push(card);
+        });
+
+        updateCarousel();
     } catch (err) {
         showToast("Ошибка при получении всех данных узлов: " + err.message);
     }
 }
+
+
+function updateCarousel() {
+    // Снимаем выделение с всех карточек
+    nodeElements.forEach(card => card.classList.remove("center"));
+
+    const total = nodeElements.length;
+    if (total === 0) return;
+
+    const leftIndex = (currentIndex - 1 + total) % total;
+    const rightIndex = (currentIndex + 1) % total;
+
+    // Скрываем все карточки
+    nodeElements.forEach(card => {
+        card.style.display = 'none';
+    });
+
+    // Показываем три нужные карточки
+    nodeElements[leftIndex].style.display = 'block';
+    nodeElements[currentIndex].style.display = 'block';
+    nodeElements[rightIndex].style.display = 'block';
+
+    // Добавляем класс center центральной карточке
+    nodeElements[currentIndex].classList.add("center");
+}
+
+document.getElementById('btnLeft').addEventListener('click', () => {
+    currentIndex = (currentIndex - 1 + nodeElements.length) % nodeElements.length;
+    updateCarousel();
+});
+
+document.getElementById('btnRight').addEventListener('click', () => {
+    currentIndex = (currentIndex + 1) % nodeElements.length;
+    updateCarousel();
+});
+
 
 async function getSingleNodeData() {
     const key = document.getElementById('monitorNodeKey').value.trim();

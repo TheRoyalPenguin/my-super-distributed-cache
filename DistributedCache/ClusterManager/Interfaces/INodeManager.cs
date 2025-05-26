@@ -11,4 +11,7 @@ public interface INodeManager
     Task<Result<List<NodeWithDataResponseDto>>> GetAllNodesWithDataAsync();
     Task<Result<string>> RebalanceAfterDeletingNode(Node node);
     Task<Result<string>> RebalanceAfterCreatingNode(Node creatingNode);
+    public  Task<Result<NodeStatusDto>> GetNodeStatusAsync(string name);
+    public  Task<Result<List<NodeStatusDto>>> GetAllNodeStatusesAsync();
+    public Task<Result<NodeWithDataResponseDto>> GetNodeWithDataAsync(string containerName);
 }

@@ -256,7 +256,7 @@ public class NodeManager : INodeManager
     public async Task<Result<NodeWithDataResponseDto>> GetNodeWithDataAsync(string containerName)
     {
 
-        var node = _cache.GetNodeForName(containerName);
+        var node = _cache.GetNodeByName(containerName);
         var nodeDataResult = await GetNodeDataAsync(node);
         if (!nodeDataResult.IsSuccess || nodeDataResult.Data == null)
             return Result<NodeWithDataResponseDto>.Fail(nodeDataResult.Error, nodeDataResult.StatusCode);
@@ -327,7 +327,7 @@ public class NodeManager : INodeManager
 
     public async Task<Result<NodeStatusDto>> GetNodeStatusAsync(string name)
     {
-        var node =  _cache.GetNodeForName(name);
+        var node =  _cache.GetNodeByName(name);
         
         string baseUrl = node.Url.ToString().EndsWith("/") ? node.Url.ToString() : node.Url.ToString() + "/";
 
