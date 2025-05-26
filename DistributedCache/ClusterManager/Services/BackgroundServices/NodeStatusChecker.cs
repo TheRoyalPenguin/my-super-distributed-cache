@@ -8,7 +8,7 @@ namespace ClusterManager.Services.BackgroundServices;
 
 public class NodeStatusChecker(ICacheStorage _cacheStorage) : BackgroundService
 {
-    private readonly Uri _dockerUri = new Uri("npipe://./pipe/docker_engine");
+    private readonly Uri _dockerUri = new Uri("unix:///var/run/docker.sock");
     protected async override Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)

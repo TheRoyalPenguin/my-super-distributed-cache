@@ -11,6 +11,17 @@ namespace ClusterManager
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAdminPanel", policy =>
+                {
+                    policy
+                        .WithOrigins("http://admin-panel:5173")
+                        .AllowAnyMethod()
+                        .AllowAnyHeader();
+                });
+            });
+
             builder.Services.AddHttpClient<IHttpService, HttpService>();
             builder.Services.AddSingleton<ICacheStorage, CacheStorage>();
             builder.Services.AddHostedService<NodeRestoreService>();
@@ -36,8 +47,8 @@ namespace ClusterManager
 
             app.UseHttpsRedirection();
 
+            app.UseCors("AllowAdminPanel");
             app.UseAuthorization();
-
 
             app.MapControllers();
 

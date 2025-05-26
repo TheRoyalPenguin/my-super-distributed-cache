@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  manager:
+    build:
+      context: ./DistributedCache/ClusterManager
+      dockerfile: Dockerfile
+    container_name: manager
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - cache-net
+  admin-panel:
+    build:
+      context: ./AdminPanel\admin-panel
+      dockerfile: Dockerfile
+    container_name: admin-panel
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./AdminPanel/admin-panel:/app
+      - /app/node_modules
+    depends_on:
+      - manager
+    networks:
+      - cache-net
+
+networks:
+  cache-net:
+    external: true

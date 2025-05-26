@@ -12,9 +12,9 @@ public class NodeRegistry : INodeRegistry
 {
     private readonly ICacheStorage _cache;
     private readonly INodeManager _manager;
-    // Для Linux изменить на - "unix:///var/run/docker.sock"
-    private readonly Uri _dockerUri = new Uri("npipe://./pipe/docker_engine"); // Windows
-    private const string baseUrl = "http://localhost:";
+    //private readonly Uri _dockerUri = new Uri("npipe://./pipe/docker_engine"); // Windows
+    private readonly Uri _dockerUri = new Uri("unix:///var/run/docker.sock"); // Linux
+    //private const string baseUrl = "http://localhost:";
     public NodeRegistry(ICacheStorage cacheStorage, INodeManager manager)
     {
         _cache = cacheStorage;
@@ -149,7 +149,8 @@ public class NodeRegistry : INodeRegistry
                     ExposedPorts = new Dictionary<string, EmptyStruct>(),
                     HostConfig = new HostConfig
                     {
-                        PortBindings = new Dictionary<string, IList<PortBinding>>()
+                        PortBindings = new Dictionary<string, IList<PortBinding>>(),
+                        NetworkMode = "cache-net"
                     },
                     Labels = new Dictionary<string, string>
                     {
@@ -172,7 +173,13 @@ public class NodeRegistry : INodeRegistry
                     foreach (var binding in config.PortBindings)
                     {
                         createParams.ExposedPorts[binding.Key] = default;
-                        createParams.HostConfig.PublishAllPorts = true; // публикуем внешний порт
+                        createParams.HostConfig.PortBindings[binding.Key] = new List<PortBinding>
+                        {
+                            new PortBinding
+                            {
+                                HostPort = binding.Value
+                            }
+                        };
                     }
                 }
 
@@ -232,7 +239,8 @@ public class NodeRegistry : INodeRegistry
 
             var inspect = await dockerClient.Containers.InspectContainerAsync(response.ID);
             var hostPort = inspect.NetworkSettings.Ports["8080/tcp"].FirstOrDefault()?.HostPort;
-            var nodeUrl = baseUrl + hostPort;
+            //var nodeUrl = baseUrl + hostPort;
+            var nodeUrl = "http://" + containerName + ":" + 8080;
 
             NodeDto dto = new()
             {
@@ -263,7 +271,7 @@ public class NodeRegistry : INodeRegistry
             },
             PortBindings = new Dictionary<string, string>
             {
-                { "8080/tcp", "" }
+                { "8080/tcp", "0" }
             }
         };
 
