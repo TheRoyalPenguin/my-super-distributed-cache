@@ -191,22 +191,31 @@ public class NodeManager : INodeManager
             var nodeKey = _cache.GetNodeKeyForItemKey(item.Key);
             var node = _cache.Nodes[nodeKey];
 
+            int countCopies = node.Replicas.Count + 1;
+            int errors = 0;
+            HttpResponseMessage res = null;
+
             var nodeSetResult = await AddNodeAndReplicasDataAsync(node, item);
 
             if (!nodeSetResult.IsSuccess)
             {
-                return Result<string?>.Fail(nodeSetResult.Error, nodeSetResult.StatusCode);
-
+                errors++;
+                node.Status = NodeStatusEnum.Error;
             }
+
             foreach (var replica in node.Replicas)
             {
                 var replicaSetResult = await AddNodeAndReplicasDataAsync(replica, item);
 
                 if (!replicaSetResult.IsSuccess)
                 {
-                    return Result<string?>.Fail(replicaSetResult.Error, replicaSetResult.StatusCode);
+                    errors++;
+                    replica.Status = NodeStatusEnum.Error;
                 }
             }
+
+            if (errors >= countCopies)
+                return Result<string?>.Fail("Ошибка добавления элемента. Весь кластер мертв.", 500);
 
             return Result<string?>.Ok("Успешно.", 200);
         }
@@ -217,13 +226,27 @@ public class NodeManager : INodeManager
     }
     private async Task<Result<HttpResponseMessage?>> GetCacheItem(Node node, string key)
     {
-        var responseResult = await _httpService.SendRequestAsync<object>(node.Url.ToString(), "api/cache/" + Uri.EscapeDataString(key), HttpMethodEnum.Get);
-        if (!responseResult.IsSuccess)
-            return Result<HttpResponseMessage?>.Fail(string.IsNullOrEmpty(responseResult.Error) ? "Ошибка получения данных узла." : responseResult.Error, responseResult.StatusCode);
+        if (node.Status == NodeStatusEnum.Online)
+        {
+            var responseResult = await _httpService.SendRequestAsync<object>(node.Url.ToString(), "api/cache/" + Uri.EscapeDataString(key), HttpMethodEnum.Get);
+            if (!responseResult.IsSuccess)
+                node.Status = NodeStatusEnum.Error;
+            else
+                return Result<HttpResponseMessage?>.Ok(responseResult.Data, (int)responseResult.Data.StatusCode);
+        }
 
-        var response = responseResult.Data;
-
-        return Result<HttpResponseMessage?>.Ok(response, (int)response.StatusCode);
+        foreach (var rep in node.Replicas)
+        {
+            if (rep.Status == NodeStatusEnum.Online)
+            {
+                var repResponseResult = await _httpService.SendRequestAsync<object>(rep.Url.ToString(), "api/cache/" + Uri.EscapeDataString(key), HttpMethodEnum.Get);
+                if (!repResponseResult.IsSuccess)
+                    rep.Status = NodeStatusEnum.Error;
+                else
+                    return Result<HttpResponseMessage?>.Ok(repResponseResult.Data, (int)repResponseResult.Data.StatusCode);
+            }
+        }
+        return Result<HttpResponseMessage?>.Fail("Ошибка получения данных. Весь кластер с данными мертв.", 500);
     }
     private async Task<Result<HttpResponseMessage?>> DeleteCacheItem(Node node, string key)
     {
