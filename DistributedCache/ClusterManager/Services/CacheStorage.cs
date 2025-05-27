@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using ClusterManager.Common;
 using ClusterManager.Common.Utils;
+using ClusterManager.Enums;
 using ClusterManager.Interfaces;
 using ClusterManager.Models;
 
@@ -19,7 +20,15 @@ public class CacheStorage : ICacheStorage
     {
         _sortedKeys = _nodes.Keys.ToList();
     }
+    public bool SetNodeStatus(NodeStatusEnum newStatus, Node node)
+    {
+        lock(_lock)
+        {
+            node.Status = newStatus;
+        }
 
+        return true;
+    }
     public bool RemoveMasterWithReplicas(string containerName)
     {
         var hashNode = HashGenerator.GetMd5HashString(containerName);
