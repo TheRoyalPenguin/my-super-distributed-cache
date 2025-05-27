@@ -105,7 +105,7 @@ public class NodeManager : INodeManager
                 NodeWithDataResponseDto replicaWithData = new()
                 {
                     Name = replica.Name,
-                    Status = node.Status,
+                    Status = replica.Status,
                     Url = replica.Url,
                     Id = replica.Id,
                     Items = ReplicaDataResult.Data
@@ -121,6 +121,8 @@ public class NodeManager : INodeManager
 
     private async Task<Result<List<CacheItemResponseDto>>> GetNodeDataAsync(Node node)
     {
+        if (node.Status != NodeStatusEnum.Online)
+            return Result<List<CacheItemResponseDto>>.Ok(new List<CacheItemResponseDto>(), 200);
         var responseResult = await _httpService.SendRequestAsync<object>(node.Url.ToString(), "api/cache/all", HttpMethodEnum.Get);
         if (!responseResult.IsSuccess)
             return Result<List<CacheItemResponseDto>>.Fail(string.IsNullOrEmpty(responseResult.Error) ? "Ошибка получения данных узла." : responseResult.Error, responseResult.StatusCode);

@@ -1,6 +1,7 @@
 ﻿using ClusterManager.Common;
 using ClusterManager.Enums;
 using ClusterManager.Interfaces;
+using ClusterManager.Models;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 
@@ -16,7 +17,11 @@ public class NodeStatusChecker(ICacheStorage _cacheStorage) : BackgroundService
             var containersResult = await GetContainersAsync();
             var containers = containersResult.Data;
 
-            var nodes = _cacheStorage.Nodes.Values;
+            var masterNodes = _cacheStorage.Nodes.Values;
+            var nodes = masterNodes
+                .SelectMany(master => new[] { master }.Concat(master.Replicas ?? new List<Node>()))
+                .ToList();
+
             foreach (var node in nodes)
             {
                 var nodeContainerId = node.Id;
