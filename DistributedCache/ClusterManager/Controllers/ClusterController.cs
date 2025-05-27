@@ -29,7 +29,16 @@ public class ClusterController(INodeManager _manager, INodeRegistry _nodeRegistr
 
         return Ok(result.Data);
     }
+    [HttpDelete("cache/delete/{itemKey}")]
+    public async Task<IActionResult> DeleteCacheItem(string itemKey)
+    {
+        var result = await _manager.DeleteCacheItemAsync(itemKey);
 
+        if (!result.IsSuccess)
+            return StatusCode(result.StatusCode, result.Error);
+
+        return Ok(result.Data);
+    }
     [HttpPost("nodes/create/{containerName}/{copiesCount?}")]
     public async Task<IActionResult> CreateNode(string containerName, int copiesCount = 1)
     {

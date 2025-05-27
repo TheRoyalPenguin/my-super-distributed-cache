@@ -223,6 +223,40 @@ public class NodeManager : INodeManager
 
         return Result<HttpResponseMessage?>.Ok(response, (int)response.StatusCode);
     }
+    private async Task<Result<HttpResponseMessage?>> DeleteCacheItem(Node node, string key)
+    {
+        int countCopies = node.Replicas.Count + 1;
+        int errors = 0;
+        HttpResponseMessage res = null;
+        var responseResult = await _httpService.SendRequestAsync<object>(node.Url.ToString(), "api/cache/delete/single/" + Uri.EscapeDataString(key), HttpMethodEnum.Delete);
+        if (!responseResult.IsSuccess)
+        {
+            node.Status = NodeStatusEnum.Error;
+            errors += 1;
+        }
+        else if (res == null)
+        {
+            res = responseResult.Data;
+        }
+
+        foreach (var rep in node.Replicas)
+        {
+            var repResponseResult = await _httpService.SendRequestAsync<object>(rep.Url.ToString(), "api/cache/delete/single/" + Uri.EscapeDataString(key), HttpMethodEnum.Delete);
+            if (!repResponseResult.IsSuccess)
+            {
+                rep.Status = NodeStatusEnum.Error;
+                errors += 1;
+            }
+            else if(res == null)
+            {
+                res = repResponseResult.Data;
+            }
+        }
+        if (errors >= countCopies)
+            return Result<HttpResponseMessage?>.Fail("Ошибка удаления данных с узла.", 500);
+
+        return Result<HttpResponseMessage?>.Ok(res, 200);
+    }
     public async Task<Result<string?>> GetCacheItemAsync(string key)
     {
         try
@@ -243,6 +277,36 @@ public class NodeManager : INodeManager
             if (response == null || !response.IsSuccessStatusCode)
             {
                 return Result<string?>.Fail("Элемент не найден", response != null ? (int)response.StatusCode : 404);
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            return Result<string?>.Ok(content, 200);
+        }
+        catch (Exception ex)
+        {
+            return Result<string?>.Fail(ex.Message, 500);
+        }
+    }
+    public async Task<Result<string>> DeleteCacheItemAsync(string itemKey)
+    {
+        try
+        {
+            var nodeKey = _cache.GetNodeKeyForItemKey(itemKey);
+            var node = _cache.Nodes[nodeKey];
+            HttpResponseMessage? response = null;
+
+            var result = await DeleteCacheItem(node, itemKey);
+
+            if (!result.IsSuccess)
+            {
+                return Result<string?>.Fail(result.Error, result.StatusCode);
+            }
+
+            response = result.Data;
+
+            if (response == null || !response.IsSuccessStatusCode)
+            {
+                return Result<string?>.Fail("Ошибка удаления элемента: ", response != null ? (int)response.StatusCode : 500);
             }
 
             var content = await response.Content.ReadAsStringAsync();

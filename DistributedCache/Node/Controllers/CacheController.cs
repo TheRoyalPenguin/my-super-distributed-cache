@@ -53,18 +53,16 @@ public class CacheController(ICacheStorage _cacheStorage) : ControllerBase
         return Ok();
     }
     [HttpPost("delete/multiple")]
-    public IActionResult Delete([FromBody] List<CacheItemRequestDto> items)
+    public IActionResult Delete([FromBody] List<string> itemKeys)
     {
-        List<CacheItemRequestDto> deletedItems = new();
+        List<string> deleted = new();
         List<string> notDeleted = new();
 
-        foreach (var item in items)
+        foreach (var itemKey in itemKeys)
         {
-            var itemKey = item.Key;
-
             var res = _cacheStorage.Cache.TryRemove(itemKey, out var _);
             if (res)
-                deletedItems.Add(item);
+                deleted.Add(itemKey);
             else
             {
                 notDeleted.Add(itemKey);
@@ -72,7 +70,15 @@ public class CacheController(ICacheStorage _cacheStorage) : ControllerBase
         }
         if (notDeleted.Count > 0)
             return BadRequest("Ошибка удаления элементов с ключами: " + string.Join(", ", notDeleted));
-        return Ok(deletedItems);
+        return Ok("Успешно");
+    }
+    [HttpDelete("delete/single/{itemKey}")]
+    public IActionResult Delete(string itemKey)
+    {
+        var res = _cacheStorage.Cache.TryRemove(itemKey, out var _);
+        if (!res)
+            return BadRequest("Ошибка удаления элемента с ключом: " + itemKey);
+        return Ok("Успешно");
     }
     [HttpGet("all")]
     public IActionResult GetAll()

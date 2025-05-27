@@ -23,6 +23,9 @@ public class HttpService(HttpClient _httpClient): IHttpService
             case HttpMethodEnum.Post:
                 response = await _httpClient.PostAsJsonAsync(requestUri, item);
                 break;
+            case HttpMethodEnum.Delete:
+                response = await _httpClient.DeleteAsync(requestUri);
+                break;
             default:
                 throw new NotSupportedException("Метод " + method.ToString() + " не поддерживается.");
         }
