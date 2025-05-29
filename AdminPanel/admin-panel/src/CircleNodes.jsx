@@ -13,6 +13,8 @@ function CircleNodes() {
   const [containerName, setContainerName] = useState("");
   const [copies, setCopies] = useState(1);
 
+  const isFetchingRef = useRef(false);
+
   useEffect(() => {
     nodesRef.current = nodes;
   }, [nodes]);
@@ -21,6 +23,8 @@ function CircleNodes() {
     let isMounted = true;
 
     async function checkUpdateNodes() {
+      if (isFetchingRef.current) return;
+
       setError(null);
       try {
         const res = await fetch("/api/monitor/nodes");
@@ -36,7 +40,7 @@ function CircleNodes() {
           setButtonUpdateText("Доступно обновление!");
         }
       } catch (err) {
-        setError(`Ошибка: ${err.message}`);
+        // setError(`Ошибка: ${err.message}`);
       }
     }
 
@@ -62,6 +66,9 @@ function CircleNodes() {
   }, [isLoading]);
 
   async function fetchNodes() {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
     setIsLoading(true);
     setError(null);
     setNodes([]);
@@ -76,9 +83,10 @@ function CircleNodes() {
       const data = await res.json();
       setNodes(data);
     } catch (err) {
-      setError(`Ошибка: ${err.message}`);
+      // setError(`Ошибка: ${err.message}`);
     } finally {
       setIsLoading(false);
+      isFetchingRef.current = false;
     }
   }
 

@@ -67,7 +67,12 @@ public class NodeManager : INodeManager
             }).ToList();
         List<string> nodeDataKeys = nodeData.Select(d => d.Key).ToList();
 
-        await AddNodeAndReplicasDataAsync(creatingNode, nodeData);
+        while (true)
+        {
+            var res = await AddNodeAndReplicasDataAsync(creatingNode, nodeData);
+            if (res.IsSuccess)
+                break;
+        }
         await DeleteNodeAndReplicasDataAsync(nextNode, nodeDataKeys);
 
         return Result<string>.Ok("Успешная перебалансировка после добавления ноды.", 200);
@@ -81,10 +86,6 @@ public class NodeManager : INodeManager
         foreach (var node in nodes.Values)
         {
             var NodeDataResult = await GetNodeDataAsync(node);
-            if (!NodeDataResult.IsSuccess || NodeDataResult.Data == null)
-            {
-                return Result<List<NodeWithDataResponseDto>>.Fail(NodeDataResult.Error, NodeDataResult.StatusCode);
-            }
 
             NodeWithDataResponseDto nodeWithData = new()
             {
@@ -92,7 +93,7 @@ public class NodeManager : INodeManager
                 Status = node.Status,
                 Url = node.Url,
                 Id = node.Id,
-                Items = NodeDataResult.Data
+                Items = NodeDataResult.IsSuccess ? NodeDataResult.Data : new List<CacheItemResponseDto>()
             };
 
             foreach (var replica in node.Replicas)
@@ -109,7 +110,8 @@ public class NodeManager : INodeManager
                     Status = replica.Status,
                     Url = replica.Url,
                     Id = replica.Id,
-                    Items = ReplicaDataResult.Data
+                    Items = ReplicaDataResult.IsSuccess ? ReplicaDataResult.Data : new List<CacheItemResponseDto>()
+
                 };
 
                 nodeWithData.Replicas.Add(replicaWithData);
@@ -227,67 +229,87 @@ public class NodeManager : INodeManager
     }
     private async Task<Result<HttpResponseMessage?>> GetCacheItem(Node node, string key)
     {
-        if (node.Status == NodeStatusEnum.Online)
+        try
         {
-            var responseResult = await _httpService.SendRequestAsync<object>(node.Url.ToString(), "api/cache/" + Uri.EscapeDataString(key), HttpMethodEnum.Get);
-            if (!responseResult.IsSuccess)
-            {
-                node.Status = NodeStatusEnum.Error;
-                if (responseResult.StatusCode == 410)
-                {
-                    return Result<HttpResponseMessage?>.Fail(responseResult.Error, responseResult.StatusCode);
-                }
-            }
-            else
-                return Result<HttpResponseMessage?>.Ok(responseResult.Data, (int)responseResult.Data.StatusCode);
-        }
+            int countCopies = node.Replicas.Count + 1;
+            int errors = 0;
 
-        foreach (var rep in node.Replicas)
-        {
-            if (rep.Status == NodeStatusEnum.Online)
+            if (node.Status == NodeStatusEnum.Online)
             {
-                var repResponseResult = await _httpService.SendRequestAsync<object>(rep.Url.ToString(), "api/cache/" + Uri.EscapeDataString(key), HttpMethodEnum.Get);
-                if (!repResponseResult.IsSuccess)
+                var responseResult = await _httpService.SendRequestAsync<object>(node.Url.ToString(), "api/cache/" + Uri.EscapeDataString(key), HttpMethodEnum.Get);
+                if (!responseResult.IsSuccess)
                 {
-                    rep.Status = NodeStatusEnum.Error;
-                    if (repResponseResult.StatusCode == 410)
+                    node.Status = NodeStatusEnum.Error;
+                    if (responseResult.StatusCode == 410)
                     {
-                        return Result<HttpResponseMessage?>.Fail(repResponseResult.Error, repResponseResult.StatusCode);
+                        return Result<HttpResponseMessage?>.Fail(responseResult.Error, responseResult.StatusCode);
                     }
                 }
                 else
-                    return Result<HttpResponseMessage?>.Ok(repResponseResult.Data, (int)repResponseResult.Data.StatusCode);
+                    return Result<HttpResponseMessage?>.Ok(responseResult.Data, (int)responseResult.Data.StatusCode);
             }
+            errors++;
+            foreach (var rep in node.Replicas)
+            {
+                if (rep.Status == NodeStatusEnum.Online)
+                {
+                    var repResponseResult = await _httpService.SendRequestAsync<object>(rep.Url.ToString(), "api/cache/" + Uri.EscapeDataString(key), HttpMethodEnum.Get);
+                    if (!repResponseResult.IsSuccess)
+                    {
+                        rep.Status = NodeStatusEnum.Error;
+                        if (repResponseResult.StatusCode == 410)
+                        {
+                            return Result<HttpResponseMessage?>.Fail(repResponseResult.Error, repResponseResult.StatusCode);
+                        }
+                    }
+                    else
+                        return Result<HttpResponseMessage?>.Ok(repResponseResult.Data, (int)repResponseResult.Data.StatusCode);
+                }
+                errors++;
+            }
+            if (errors >= countCopies)
+            {
+                return Result<HttpResponseMessage?>.Fail("Ошибка получения данных. Весь кластер с данными мертв.", 500);
+            }
+            return Result<HttpResponseMessage?>.Fail("Элемент не найден.", 404);
         }
-        return Result<HttpResponseMessage?>.Fail("Ошибка получения данных. Весь кластер с данными мертв.", 500);
+        catch (Exception ex)
+        {
+            return Result<HttpResponseMessage?>.Fail(ex.Message, 500);
+        }
     }
     private async Task<Result<HttpResponseMessage?>> DeleteCacheItem(Node node, string key)
     {
         int countCopies = node.Replicas.Count + 1;
         int errors = 0;
         HttpResponseMessage res = null;
-        var responseResult = await _httpService.SendRequestAsync<object>(node.Url.ToString(), "api/cache/delete/single/" + Uri.EscapeDataString(key), HttpMethodEnum.Delete);
-        if (!responseResult.IsSuccess)
+        if (node.Status == NodeStatusEnum.Online)
         {
-            node.Status = NodeStatusEnum.Error;
-            errors += 1;
-        }
-        else if (res == null)
-        {
-            res = responseResult.Data;
-        }
-
-        foreach (var rep in node.Replicas)
-        {
-            var repResponseResult = await _httpService.SendRequestAsync<object>(rep.Url.ToString(), "api/cache/delete/single/" + Uri.EscapeDataString(key), HttpMethodEnum.Delete);
-            if (!repResponseResult.IsSuccess)
+            var responseResult = await _httpService.SendRequestAsync<object>(node.Url.ToString(), "api/cache/delete/single/" + Uri.EscapeDataString(key), HttpMethodEnum.Delete);
+            if (!responseResult.IsSuccess)
             {
-                rep.Status = NodeStatusEnum.Error;
+                node.Status = NodeStatusEnum.Error;
                 errors += 1;
             }
-            else if(res == null)
+            else if (res == null)
             {
-                res = repResponseResult.Data;
+                res = responseResult.Data;
+            }
+        }
+        foreach (var rep in node.Replicas)
+        {
+            if (rep.Status == NodeStatusEnum.Online)
+            {
+                var repResponseResult = await _httpService.SendRequestAsync<object>(rep.Url.ToString(), "api/cache/delete/single/" + Uri.EscapeDataString(key), HttpMethodEnum.Delete);
+                if (!repResponseResult.IsSuccess)
+                {
+                    rep.Status = NodeStatusEnum.Error;
+                    errors += 1;
+                }
+                else if (res == null)
+                {
+                    res = repResponseResult.Data;
+                }
             }
         }
         if (errors >= countCopies)
