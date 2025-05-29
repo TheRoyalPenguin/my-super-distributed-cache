@@ -65,9 +65,15 @@ public class NodeManager : INodeManager
                 Value = c.Value,
                 TTL = c.TTL
             }).ToList();
+        List<string> nodeDataKeys = nodeData.Select(d => d.Key).ToList();
 
-        await AddNodeAndReplicasDataAsync(creatingNode, nodeData);
-        await DeleteNodeAndReplicasDataAsync(nextNode, nodeData);
+        while (true)
+        {
+            var res = await AddNodeAndReplicasDataAsync(creatingNode, nodeData);
+            if (res.IsSuccess)
+                break;
+        }
+        await DeleteNodeAndReplicasDataAsync(nextNode, nodeDataKeys);
 
         return Result<string>.Ok("Успешная перебалансировка после добавления ноды.", 200);
     }
@@ -80,10 +86,6 @@ public class NodeManager : INodeManager
         foreach (var node in nodes.Values)
         {
             var NodeDataResult = await GetNodeDataAsync(node);
-            if (!NodeDataResult.IsSuccess || NodeDataResult.Data == null)
-            {
-                return Result<List<NodeWithDataResponseDto>>.Fail(NodeDataResult.Error, NodeDataResult.StatusCode);
-            }
 
             NodeWithDataResponseDto nodeWithData = new()
             {
@@ -91,7 +93,7 @@ public class NodeManager : INodeManager
                 Status = node.Status,
                 Url = node.Url,
                 Id = node.Id,
-                Items = NodeDataResult.Data
+                Items = NodeDataResult.IsSuccess ? NodeDataResult.Data : new List<CacheItemResponseDto>()
             };
 
             foreach (var replica in node.Replicas)
@@ -105,10 +107,11 @@ public class NodeManager : INodeManager
                 NodeWithDataResponseDto replicaWithData = new()
                 {
                     Name = replica.Name,
-                    Status = node.Status,
+                    Status = replica.Status,
                     Url = replica.Url,
                     Id = replica.Id,
-                    Items = ReplicaDataResult.Data
+                    Items = ReplicaDataResult.IsSuccess ? ReplicaDataResult.Data : new List<CacheItemResponseDto>()
+
                 };
 
                 nodeWithData.Replicas.Add(replicaWithData);
@@ -121,6 +124,8 @@ public class NodeManager : INodeManager
 
     private async Task<Result<List<CacheItemResponseDto>>> GetNodeDataAsync(Node node)
     {
+        if (node.Status != NodeStatusEnum.Online)
+            return Result<List<CacheItemResponseDto>>.Ok(new List<CacheItemResponseDto>(), 200);
         var responseResult = await _httpService.SendRequestAsync<object>(node.Url.ToString(), "api/cache/all", HttpMethodEnum.Get);
         if (!responseResult.IsSuccess)
             return Result<List<CacheItemResponseDto>>.Fail(string.IsNullOrEmpty(responseResult.Error) ? "Ошибка получения данных узла." : responseResult.Error, responseResult.StatusCode);
@@ -167,15 +172,15 @@ public class NodeManager : INodeManager
 
         return Result<string>.Ok("Успешно.", 200);
     }
-    private async Task<Result<string>> DeleteNodeAndReplicasDataAsync(Node node, List<CacheItemRequestDto> itemsToDelete)
+    private async Task<Result<string>> DeleteNodeAndReplicasDataAsync(Node node, List<string> itemKeysToDelete)
     {
-        var responseResult = await _httpService.SendRequestAsync<List<CacheItemRequestDto>>(node.Url.ToString(), "api/cache/delete/multiple", HttpMethodEnum.Post, itemsToDelete);
+        var responseResult = await _httpService.SendRequestAsync<List<string>>(node.Url.ToString(), "api/cache/delete/multiple", HttpMethodEnum.Post, itemKeysToDelete);
         if (!responseResult.IsSuccess)
             return Result<string>.Fail(string.IsNullOrEmpty(responseResult.Error) ? "Ошибка добавления данных в узел." : responseResult.Error, responseResult.StatusCode);
 
         foreach (var replica in node.Replicas)
         {
-            var responseReplicaResult = await _httpService.SendRequestAsync<List<CacheItemRequestDto>>(replica.Url.ToString(), "api/cache/delete/multiple", HttpMethodEnum.Post, itemsToDelete);
+            var responseReplicaResult = await _httpService.SendRequestAsync<List<string>>(replica.Url.ToString(), "api/cache/delete/multiple", HttpMethodEnum.Post, itemKeysToDelete);
             if (!responseReplicaResult.IsSuccess)
                 return Result<string>.Fail(string.IsNullOrEmpty(responseReplicaResult.Error) ? "Ошибка добавления данных в узел." : responseReplicaResult.Error, responseReplicaResult.StatusCode);
         }
@@ -189,22 +194,31 @@ public class NodeManager : INodeManager
             var nodeKey = _cache.GetNodeKeyForItemKey(item.Key);
             var node = _cache.Nodes[nodeKey];
 
+            int countCopies = node.Replicas.Count + 1;
+            int errors = 0;
+            HttpResponseMessage res = null;
+
             var nodeSetResult = await AddNodeAndReplicasDataAsync(node, item);
 
             if (!nodeSetResult.IsSuccess)
             {
-                return Result<string?>.Fail(nodeSetResult.Error, nodeSetResult.StatusCode);
-
+                errors++;
+                node.Status = NodeStatusEnum.Error;
             }
+
             foreach (var replica in node.Replicas)
             {
                 var replicaSetResult = await AddNodeAndReplicasDataAsync(replica, item);
 
                 if (!replicaSetResult.IsSuccess)
                 {
-                    return Result<string?>.Fail(replicaSetResult.Error, replicaSetResult.StatusCode);
+                    errors++;
+                    replica.Status = NodeStatusEnum.Error;
                 }
             }
+
+            if (errors >= countCopies)
+                return Result<string?>.Fail("Ошибка добавления элемента. Весь кластер мертв.", 500);
 
             return Result<string?>.Ok("Успешно.", 200);
         }
@@ -215,13 +229,93 @@ public class NodeManager : INodeManager
     }
     private async Task<Result<HttpResponseMessage?>> GetCacheItem(Node node, string key)
     {
-        var responseResult = await _httpService.SendRequestAsync<object>(node.Url.ToString(), "api/cache/" + Uri.EscapeDataString(key), HttpMethodEnum.Get);
-        if (!responseResult.IsSuccess)
-            return Result<HttpResponseMessage?>.Fail(string.IsNullOrEmpty(responseResult.Error) ? "Ошибка получения данных узла." : responseResult.Error, responseResult.StatusCode);
+        try
+        {
+            int countCopies = node.Replicas.Count + 1;
+            int errors = 0;
 
-        var response = responseResult.Data;
+            if (node.Status == NodeStatusEnum.Online)
+            {
+                var responseResult = await _httpService.SendRequestAsync<object>(node.Url.ToString(), "api/cache/" + Uri.EscapeDataString(key), HttpMethodEnum.Get);
+                if (!responseResult.IsSuccess)
+                {
+                    node.Status = NodeStatusEnum.Error;
+                    if (responseResult.StatusCode == 410)
+                    {
+                        return Result<HttpResponseMessage?>.Fail(responseResult.Error, responseResult.StatusCode);
+                    }
+                }
+                else
+                    return Result<HttpResponseMessage?>.Ok(responseResult.Data, (int)responseResult.Data.StatusCode);
+            }
+            errors++;
+            foreach (var rep in node.Replicas)
+            {
+                if (rep.Status == NodeStatusEnum.Online)
+                {
+                    var repResponseResult = await _httpService.SendRequestAsync<object>(rep.Url.ToString(), "api/cache/" + Uri.EscapeDataString(key), HttpMethodEnum.Get);
+                    if (!repResponseResult.IsSuccess)
+                    {
+                        rep.Status = NodeStatusEnum.Error;
+                        if (repResponseResult.StatusCode == 410)
+                        {
+                            return Result<HttpResponseMessage?>.Fail(repResponseResult.Error, repResponseResult.StatusCode);
+                        }
+                    }
+                    else
+                        return Result<HttpResponseMessage?>.Ok(repResponseResult.Data, (int)repResponseResult.Data.StatusCode);
+                }
+                errors++;
+            }
+            if (errors >= countCopies)
+            {
+                return Result<HttpResponseMessage?>.Fail("Ошибка получения данных. Весь кластер с данными мертв.", 500);
+            }
+            return Result<HttpResponseMessage?>.Fail("Элемент не найден.", 404);
+        }
+        catch (Exception ex)
+        {
+            return Result<HttpResponseMessage?>.Fail(ex.Message, 500);
+        }
+    }
+    private async Task<Result<HttpResponseMessage?>> DeleteCacheItem(Node node, string key)
+    {
+        int countCopies = node.Replicas.Count + 1;
+        int errors = 0;
+        HttpResponseMessage res = null;
+        if (node.Status == NodeStatusEnum.Online)
+        {
+            var responseResult = await _httpService.SendRequestAsync<object>(node.Url.ToString(), "api/cache/delete/single/" + Uri.EscapeDataString(key), HttpMethodEnum.Delete);
+            if (!responseResult.IsSuccess)
+            {
+                node.Status = NodeStatusEnum.Error;
+                errors += 1;
+            }
+            else if (res == null)
+            {
+                res = responseResult.Data;
+            }
+        }
+        foreach (var rep in node.Replicas)
+        {
+            if (rep.Status == NodeStatusEnum.Online)
+            {
+                var repResponseResult = await _httpService.SendRequestAsync<object>(rep.Url.ToString(), "api/cache/delete/single/" + Uri.EscapeDataString(key), HttpMethodEnum.Delete);
+                if (!repResponseResult.IsSuccess)
+                {
+                    rep.Status = NodeStatusEnum.Error;
+                    errors += 1;
+                }
+                else if (res == null)
+                {
+                    res = repResponseResult.Data;
+                }
+            }
+        }
+        if (errors >= countCopies)
+            return Result<HttpResponseMessage?>.Fail("Ошибка удаления данных с узла.", 500);
 
-        return Result<HttpResponseMessage?>.Ok(response, (int)response.StatusCode);
+        return Result<HttpResponseMessage?>.Ok(res, 200);
     }
     public async Task<Result<string?>> GetCacheItemAsync(string key)
     {
@@ -232,7 +326,6 @@ public class NodeManager : INodeManager
             HttpResponseMessage? response = null;
 
             var result = await GetCacheItem(node, key);
-
             if (!result.IsSuccess)
             {
                 return Result<string?>.Fail(result.Error, result.StatusCode);
@@ -243,6 +336,36 @@ public class NodeManager : INodeManager
             if (response == null || !response.IsSuccessStatusCode)
             {
                 return Result<string?>.Fail("Элемент не найден", response != null ? (int)response.StatusCode : 404);
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            return Result<string?>.Ok(content, 200);
+        }
+        catch (Exception ex)
+        {
+            return Result<string?>.Fail(ex.Message, 500);
+        }
+    }
+    public async Task<Result<string>> DeleteCacheItemAsync(string itemKey)
+    {
+        try
+        {
+            var nodeKey = _cache.GetNodeKeyForItemKey(itemKey);
+            var node = _cache.Nodes[nodeKey];
+            HttpResponseMessage? response = null;
+
+            var result = await DeleteCacheItem(node, itemKey);
+
+            if (!result.IsSuccess)
+            {
+                return Result<string?>.Fail(result.Error, result.StatusCode);
+            }
+
+            response = result.Data;
+
+            if (response == null || !response.IsSuccessStatusCode)
+            {
+                return Result<string?>.Fail("Ошибка удаления элемента: ", response != null ? (int)response.StatusCode : 500);
             }
 
             var content = await response.Content.ReadAsStringAsync();
