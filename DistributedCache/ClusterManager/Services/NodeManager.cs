@@ -83,7 +83,7 @@ public class NodeManager : INodeManager
         if (nodes == null || nodes.Count == 0)
             return Result<List<NodeWithDataResponseDto>>.Fail("Список нод пуст.", 404);
         List<NodeWithDataResponseDto> result = new();
-        foreach (var node in nodes.Values)
+        foreach (var node in nodes.Values.ToList())
         {
             var NodeDataResult = await GetNodeDataAsync(node);
 
